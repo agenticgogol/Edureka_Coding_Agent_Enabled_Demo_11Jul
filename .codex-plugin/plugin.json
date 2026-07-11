@@ -1,0 +1,32 @@
+{
+  "name": "coding-agent-enabled-demo",
+  "version": "1.0.0",
+  "description": "Codex workflow skills for building brief-driven AI projects, concepts, and teaching demos.",
+  "author": {
+    "name": "Edureka Full Course"
+  },
+  "license": "UNLICENSED",
+  "keywords": [
+    "codex",
+    "coding-agent",
+    "ai-projects",
+    "teaching"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Coding Agent Enabled Demo",
+    "shortDescription": "Brief-to-build Codex workflows for AI demos.",
+    "longDescription": "Reusable Codex skills and workflow prompts for building project, concept, and teaching-demo artifacts from a human brief with required API-key verification and end-to-end validation.",
+    "developerName": "Edureka Full Course",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Create a new AI project brief.",
+      "Run the project pipeline.",
+      "Build a teaching demo."
+    ]
+  }
+}

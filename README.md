@@ -1,7 +1,7 @@
 # Coding_Agent_Enabled_Demo
 
 Build end-to-end projects and atomic concept demos by conversing with
-Claude Code / Codex, starting from a plain-language brief instead of code.
+Codex or Claude Code, starting from a plain-language brief instead of code.
 
 ## How it works
 
@@ -36,13 +36,14 @@ Claude Code / Codex, starting from a plain-language brief instead of code.
 5. When done, the project/concept folder is self-contained: brief, design,
    plan, tests, and working code/notebook, runnable with one command.
 
-Commands live in `.claude/commands/`. **Full sequence, the invocation
-model (skills vs subagents vs commands), and the reasoning behind the
-ordering: see `WORKFLOW.md`.**
+Codex instructions live in `AGENTS.md`; reusable Codex skills live in
+`skills/`; command-style prompt recipes live in `prompts/`. The legacy
+Claude Code copies remain in `.claude/`. **Full sequence, the invocation
+model, and the reasoning behind the ordering: see `WORKFLOW.md`.**
 
 ## Layout
 
-- `.claude/skills/` — generic, reusable skills: brief-writing, clarifying,
+- `skills/` — generic, reusable Codex skills: brief-writing, clarifying,
   `require-api-key` (hard gate, no mock mode), design, planning,
   test-writing (with a user-confirmation gate), env setup, frontend/backend
   scaffolding, one agent skill per framework
@@ -51,8 +52,16 @@ ordering: see `WORKFLOW.md`.**
   `research-first` (for fast-moving frameworks), `security-check`,
   `eval-and-observability`, `lint-and-typecheck`, `validate-env`,
   integration, verification, deploy configs. Apply to any project/concept.
-- `.claude/agents/` — subagents with scoped responsibilities (clarifier,
-  planner, frontend/backend/agent builders, integrator, reviewer).
+- `agents/` — role prompts with scoped responsibilities (clarifier,
+  planner, frontend/backend/agent builders, integrator, reviewer). Use
+  them as delegation prompts or scope boundaries in Codex.
+- `prompts/` — command-style workflow recipes (`new-project`,
+  `run-pipeline`, `test-project`, etc.) copied from the original slash
+  commands for Codex use.
+- `.codex-plugin/plugin.json` — local Codex plugin manifest exposing the
+  `skills/` directory.
+- `.claude/` — legacy Claude Code copies of the same skills, agents, and
+  commands for backwards compatibility.
 - `_shared/` — copy-from templates (`config.py`, `llm_client.py`) so
   required-key enforcement and provider-switching behavior stay consistent
   across projects instead of being reinvented each time. No mock mode —

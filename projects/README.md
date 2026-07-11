@@ -6,9 +6,9 @@ To start a new project:
 
 1. Create `projects/<slug>/`.
 2. Add `project_brief.md` (use the `write-project-brief` skill if you want
-   Claude to draft it with you).
-3. Tell Claude Code: "read `projects/<slug>/project_brief.md` and start the
-   workflow" — it will follow `../CLAUDE.md`: clarify, design, plan, build,
+   Codex to draft it with you).
+3. Tell Codex: "read `projects/<slug>/project_brief.md` and start the
+   workflow" — it will follow `../AGENTS.md`: clarify, design, plan, build,
    integrate, verify.
 
 Each project folder ends up self-contained: brief, `design.md`, `plan.md`,

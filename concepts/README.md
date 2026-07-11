@@ -6,10 +6,10 @@ To start a new concept:
 
 1. Create `concepts/<slug>/`.
 2. Add `concept_brief.md` (use the `write-concept-brief` skill if you want
-   Claude to draft it with you). One concept per folder — if the idea
+   Codex to draft it with you). One concept per folder — if the idea
    covers two or more distinct concepts, split it into separate folders.
-3. Tell Claude Code: "read `concepts/<slug>/concept_brief.md` and start the
-   workflow" — it will follow `../CLAUDE.md`: clarify, design, plan, build
+3. Tell Codex: "read `concepts/<slug>/concept_brief.md` and start the
+   workflow" — it will follow `../AGENTS.md`: clarify, design, plan, build
    (via the `notebook-concept` skill), integrate, verify.
 
 Each concept folder ends up self-contained: brief, `design.md`, `plan.md`,

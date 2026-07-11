@@ -1,36 +1,34 @@
 # Workflow — which skill or subagent to invoke, and when
 
 This is the canonical reference for building anything in this directory.
-`CLAUDE.md` has the short version; this file has the full table and the
-reasoning behind the ordering.
+`AGENTS.md` has the Codex short version; `CLAUDE.md` remains for Claude
+Code. This file has the full table and the reasoning behind the ordering.
 
 ## How invocation actually works (read this first)
 
 Three different mechanisms are in play, and they trigger differently:
 
-- **Skills** (`.claude/skills/*/SKILL.md`) are auto-discovered by Claude
-  Code from their `description` field. Claude *may* invoke one on its own
-  when a task matches, but it is not required to, and it can also be
-  invoked explicitly by name ("use the `security-check` skill"). Do not
-  rely on a skill firing itself for anything that must happen — treat
-  skills as capabilities the agent draws on, not as a scheduler.
-- **Subagents** (`.claude/agents/*.md`) never run themselves — something
-  has to spawn them (the `Agent` tool) or address them directly. They
-  exist to isolate context per slice (frontend vs backend vs agent code),
-  not to enforce sequencing on their own.
-- **Slash commands** (`.claude/commands/*.md`) are the deterministic entry
-  point. This is the actual answer to "how do I make sure the right things
-  happen in the right order": you type `/run-pipeline projects <slug>` and
-  the command's own instructions walk every stage explicitly, in the order
-  below, rather than hoping the model remembers `CLAUDE.md` unprompted.
+- **Skills** (`skills/*/SKILL.md` for Codex, mirrored from
+  `.claude/skills/*/SKILL.md`) are discovered from their `description`
+  field. The agent may invoke one on its own when a task matches, but it
+  is not required to. It can also be invoked explicitly by name ("use the
+  `security-check` skill"). Do not rely on a skill firing itself for
+  anything that must happen — treat skills as capabilities the agent draws
+  on, not as a scheduler.
+- **Role prompts** (`agents/*.md`, mirrored from `.claude/agents/*.md`)
+  never run themselves. Use them to isolate context per slice (frontend vs
+  backend vs agent code), not to enforce sequencing on their own.
+- **Prompt recipes** (`prompts/*.md`, mirrored from `.claude/commands/*.md`)
+  are the deterministic entry point. This is the practical answer to "how
+  do I make sure the right things happen in the right order": read the
+  matching recipe, e.g. `prompts/run-pipeline.md`, and follow every stage
+  explicitly, in the order below.
 
-**In practice: use the commands.** `/new-project`, `/new-concept`,
-`/run-pipeline`, `/test-project`, `/status-project` (see each command file
-in `.claude/commands/`) are the intended way to drive this workflow. The
-skill/subagent table below is what those commands invoke internally, and
-is also there for when you want to run one stage manually instead of the
-full pipeline (e.g. "just re-run `/test-project` after I hand-edited a
-file").
+**In practice: use the prompt recipes.** `new-project`, `new-concept`,
+`run-pipeline`, `test-project`, and `status-project` (see `prompts/`) are
+the intended way to drive this workflow in Codex. The skill/role table
+below is what those recipes invoke internally, and is also there for when
+you want to run one stage manually instead of the full pipeline.
 
 ## Full sequence
 
@@ -78,8 +76,7 @@ file").
 - **Agent framework choice is never silent.** Step 9 always picks the
   skill matching what `design.md` names. Substituting `agent-langgraph`
   for a brief that names CrewAI or DSPy is exactly the "substitution not
-  allowed" failure this repo's rules forbid elsewhere (see root
-  `CODEX.md`).
+  allowed" failure this repo's rules forbid elsewhere (see `AGENTS.md`).
 - **Research-first and spike-first apply only where they earn their cost.**
   LangGraph/FastAPI/Next.js are stable and well-represented in the model's
   training data — skip the extra step there. CrewAI, DSPy, real MCP, and
@@ -138,7 +135,7 @@ It keeps three things instead, in place of that ceremony:
   reports exactly what's blocking it if it's genuinely stuck. A dead API
   key is treated as a hard stop here too, not something to debug around.
 
-## Commands (`.claude/commands/`)
+## Prompt Recipes (`prompts/`, mirrored from `.claude/commands/`)
 
 | Command | Does |
 |---|---|
