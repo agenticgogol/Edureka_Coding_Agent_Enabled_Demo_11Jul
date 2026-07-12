@@ -1,0 +1,34 @@
+Acme Robotics Employee Handbook (Sample)
+
+Section 1: Leave Policy
+Full-time employees at Acme Robotics accrue 18 days of paid time off (PTO)
+per calendar year. PTO accrues at a rate of 1.5 days per completed month
+of service. Unused PTO up to 5 days may be carried over into the next
+calendar year; any remaining balance above 5 days is forfeited on
+December 31st. Employees must submit leave requests through the HR portal
+at least 5 business days in advance for planned leave.
+
+Section 2: Remote Work Policy
+Employees may work remotely up to 3 days per week, subject to manager
+approval. Fully remote arrangements require VP-level sign-off and are
+reviewed every 6 months. All remote employees must be reachable during
+core hours, which are 10:00 AM to 4:00 PM in their local time zone.
+
+Section 3: Expense Reimbursement
+Business-related expenses under $75 do not require pre-approval and can
+be submitted directly through the expense system with a receipt attached.
+Expenses of $75 or more require manager pre-approval before the expense
+is incurred. Reimbursement is typically processed within 10 business days
+of submission.
+
+Section 4: Performance Reviews
+Performance reviews are conducted twice a year, in June and December.
+Each review includes a self-assessment, a manager assessment, and a
+calibration step across the team. Compensation changes resulting from
+reviews take effect in the following pay cycle.
+
+Section 5: Equipment Policy
+New employees receive a standard equipment kit consisting of a laptop,
+monitor, keyboard, and mouse within their first week. Equipment requests
+outside the standard kit (e.g., a second monitor, specialized software)
+must be submitted to IT with manager approval and are reviewed weekly.

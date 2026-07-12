@@ -1,0 +1,9 @@
+langchain==0.3.7
+langchain-community==0.3.7
+langchain-openai==0.2.9
+langchain-chroma==0.1.4
+chromadb==0.5.20
+pypdf==5.1.0
+beautifulsoup4==4.12.3
+python-dotenv==1.0.1
+jupyter==1.1.1
