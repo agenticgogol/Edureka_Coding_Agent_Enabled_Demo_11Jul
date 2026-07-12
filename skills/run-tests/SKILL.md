@@ -27,15 +27,15 @@ skill is the one full-suite run that counts as the project's test gate.
    pass" without having actually executed them in this step; a claim
    based on earlier per-slice runs during build is not sufficient, because
    integration/security/other fixes since then may have broken something.
-3. If anything fails:
-   - Fix the implementation (preferred) or, if the test itself was wrong
-     (rare, and only if the drafted case actually contradicts the
-     user-confirmed intent from `write-and-validate-tests` step 2), fix the
-     test — but flag that correction back to the user rather than silently
-     changing what was confirmed.
-   - Re-run the full suite again. Do not proceed to `lint-and-typecheck`
-     until 100% pass, or until any skipped/xfail test has an explicit,
-     documented reason.
+3. If anything fails, invoke `project-debug` to reproduce, diagnose, and
+   fix it (preferred), rather than one-shot guessing — it will fix the
+   implementation, or, only if the test itself was wrong (rare, and only
+   if the drafted case actually contradicts the user-confirmed intent from
+   `write-and-validate-tests` step 2), fix the test and flag that
+   correction back to the user rather than silently changing what was
+   confirmed. Re-run the full suite again after each fix. Do not proceed
+   to `lint-and-typecheck` until 100% pass, or until any skipped/xfail
+   test has an explicit, documented reason.
 4. Record the final run output (pass/fail counts, command used) in the
    project README's "Testing" section, and mark the corresponding
    `plan.md` checklist item complete only once this step has actually run

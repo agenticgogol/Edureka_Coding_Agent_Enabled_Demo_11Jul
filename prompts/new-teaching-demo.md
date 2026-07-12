@@ -1,18 +1,19 @@
 ---
-description: Start a new lightweight, progressive teaching demo (notebook or small project) — drafts teaching_brief.md and stops for review.
+description: Create the folder for a new teaching demo under teaching/. Does not interview, draft a brief, or write code — that's what /run-teaching-pipeline does next.
 argument-hint: <teaching-slug>
 ---
 
 The user wants a teaching demo with slug `$ARGUMENTS` under `teaching/`.
-This is the lightweight track — for progressive, instructor-driven demos
-(e.g. "a) basic API call, b) add system prompt, c) add tool calling, d)
-add memory, e) basic RAG"), not the full certification-grade pipeline used
-by `projects/`/`concepts/`.
+This command's only job is to create the workspace so
+`/run-teaching-pipeline $ARGUMENTS` has somewhere to write to — it does not
+ask questions or draft anything.
 
-1. If `teaching/$ARGUMENTS/teaching_brief.md` already exists, read it and
-   report its state instead of overwriting it.
-2. Otherwise, create the folder and use the `teaching-brief` skill to
-   interview the user: ordered list of steps, notebook vs script/project
-   format, constraints, audience level.
-3. Show the drafted brief and stop. Tell the user to run
-   `/run-teaching-pipeline $ARGUMENTS` to build it.
+1. If `teaching/$ARGUMENTS/` already exists and has a `teaching_brief.md`,
+   read it and report its current state instead of overwriting anything —
+   tell the user whether to resume via `/run-teaching-pipeline $ARGUMENTS`
+   (if the brief isn't fully approved yet) or use `/add-teaching-step
+   $ARGUMENTS` (if it's already built and they want to extend it).
+2. Otherwise, create the empty `teaching/$ARGUMENTS/` folder.
+3. Tell the user to run `/run-teaching-pipeline $ARGUMENTS` next — that
+   command is where the actual project description, clarifying questions,
+   format choice, and every other checkpoint happen.

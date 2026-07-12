@@ -13,9 +13,20 @@ Same spirit as `write-project-brief` but scoped to a single atomic concept
 - User wants to demo/teach one idea (e.g. "embeddings intuition", "ReAct
   loop trace") and no `concept_brief.md` exists yet.
 
+## Handling a detailed freeform description
+
+If the user pastes a detailed description rather than a rough idea, parse it
+first: list what it already answers (library/API, provider, expected
+behavior) versus what's genuinely missing. Don't ask about anything already
+stated — restate it for confirmation instead. For genuine gaps, ask with
+concrete options and a recommended default rather than an open question
+(e.g. "prior knowledge level: assumes learner knows Python basics but not
+embeddings — correct?"). Batch all gap questions into one numbered message.
+
 ## Procedure
 
-1. Ask:
+1. If given a detailed description, run "Handling a detailed freeform
+   description" above first. Otherwise ask:
    - What is the one concept being taught? (must be a single idea — if the
      user describes 2+ concepts, tell them to split into multiple concept
      folders)

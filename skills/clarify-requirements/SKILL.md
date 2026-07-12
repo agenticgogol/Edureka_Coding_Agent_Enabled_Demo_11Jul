@@ -16,7 +16,12 @@ to make sure nothing in `design.md` rests on a guess.
 
 ## Procedure
 
-1. Re-read the brief. List every place where:
+1. Re-read the brief. First separate what it already answers explicitly
+   (frameworks, providers, data flow choices stated in the brief's prose or
+   `## Decisions`) from what's genuinely open — a brief drafted from a
+   detailed user description often already resolves most of these; do not
+   ask about anything the brief already states, even implicitly, just
+   restate it as a confirmed assumption. Then list every place where:
    - a requirement is vague ("fast," "simple," "robust" with no metric)
    - a choice is implied but not stated (which frontend framework, which
      LLM provider, sync vs async, single-user vs multi-user)
@@ -24,8 +29,11 @@ to make sure nothing in `design.md` rests on a guess.
    - constraints conflict with each other or with what generic skills in
      this repo default to (e.g. brief says "no paid APIs" but also "must
      use GPT-4" — surface the conflict, don't silently pick one)
-2. Ask the user these questions in one batch, grouped and numbered. Prefer
-   concrete either/or framing over open-ended questions when possible.
+2. Ask the user these questions in one batch, grouped and numbered. Always
+   prefer concrete options with a recommended default over open-ended
+   questions (e.g. "Retrieval top-k: 3 / 5 / 10? Recommend 5 for this
+   corpus size unless you have a reason otherwise") — the user should be
+   able to answer most items with a word or a pick, not a paragraph.
 3. Do not proceed to `technical-design` until answered. If the user says
    "your call" on something, record that decision explicitly in the brief
    (append to a `## Decisions` section) so it's not re-litigated later.

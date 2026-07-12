@@ -31,7 +31,8 @@ files exist and look right." Nothing is marked complete before this passes.
    repo to fall back on if the key stopped working; if a call fails here
    due to the key, that's a real failure, fix it (re-verify the key, don't
    patch around it).
-4. If anything fails, fix it and re-run this skill — don't hand a failing
-   verify back as "mostly done."
+4. If anything fails, invoke `project-debug` to reproduce, diagnose, and
+   fix it, then re-run this skill — don't hand a failing verify back as
+   "mostly done."
 5. Record the verified run command in the project/concept README so a
    human or future agent can repeat it without re-deriving it.

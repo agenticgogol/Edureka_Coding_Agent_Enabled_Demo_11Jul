@@ -1,6 +1,6 @@
 ---
 name: deploy-config
-description: Use only when project_brief.md or design.md explicitly calls for deployment. Generates vercel.json / render.yaml / Dockerfile for a project, after run-and-verify has passed locally.
+description: Use only when project_brief.md or design.md explicitly calls for deployment. Generates vercel.json / render.yaml for a project after run-and-verify has passed locally; delegates to containerize-project for Docker/Compose/Makefile.
 ---
 
 # Deploy Config
@@ -20,9 +20,12 @@ description: Use only when project_brief.md or design.md explicitly calls for de
 2. Backend (FastAPI) -> Render: add `render.yaml` with build/start commands
    matching exactly what `run-and-verify` used locally — don't invent a
    different start command for prod.
-3. If the brief calls for containerization instead: add a `Dockerfile` per
-   component (or one multi-stage Dockerfile) and a `docker-compose.yml` for
-   local parity with prod.
+3. If the brief calls for containerization instead of (or in addition to)
+   a hosting platform: invoke `containerize-project` for the
+   `Dockerfile`/`docker-compose.yml`/`Makefile` rather than generating
+   them here — it owns the prerequisite checks (Docker/Compose/Make
+   actually installed) and the stack-detection logic; don't duplicate
+   that.
 4. List every required environment variable/secret that must be set in the
    deployment platform (matching the project's `.env.example` exactly) in
    the project README's "Deploy" section.

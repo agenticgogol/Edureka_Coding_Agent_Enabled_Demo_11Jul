@@ -54,7 +54,31 @@ you want to run one stage manually instead of the full pipeline.
 | 18 | Integration | `integrate-and-assemble` | `integrator` | Single run command; contracts/env/deps reconciled |
 | 19 | End-to-end proof | `run-and-verify` | `integrator` | One real request driven through the live, freshly-installed app, against the real provider |
 | 20 | Final review | — (code-review + brief-fidelity pass) | `reviewer` | Confirms output matches brief; flags scope drift |
-| 21 | Deploy config | `deploy-config` — only if brief requires it | — | `vercel.json` / `render.yaml` / `Dockerfile` |
+| 21 | Deploy config | `deploy-config` — only if brief requires it | — | `vercel.json` / `render.yaml`; delegates to `containerize-project` for Docker/Compose/Makefile |
+
+`containerize-project` (`/containerize <projects\|concepts\|teaching>
+<slug> [dockerfile\|compose\|makefile]`) is not a pipeline stage — it's a
+standalone, user-called skill for any already-verified unit in any track.
+It studies the project folder to detect its stack, hard-stops if
+Docker/Compose/Make aren't actually installed (and tells the user exactly
+what to fix), then generates only the requested files and verifies with a
+real `docker build`.
+
+`deployment-advisor` (`/assess-deployment <projects\|concepts\|teaching>
+<slug>`) is also standalone and read-only — it studies the same kind of
+already-verified unit and tells the user *where* to deploy it (Vercel-
+only / Vercel + GitHub Actions / Vercel + Render-Railway, based on
+frontend framework, statefulness, long-lived connections, background
+jobs) with a manual step-by-step walkthrough. It never generates config
+files or deploys anything — if the user wants to proceed after reading the
+plan, it names `deploy-config` and/or `containerize-project` as the next
+step rather than doing their job itself.
+
+`project-debug` isn't a numbered stage — it's invoked automatically by
+`run-tests` (13) and `run-and-verify` (19) on any failure, and by
+`/fix-bug` for bugs reported after the pipeline already completed once. It
+iterates on real errors (reproduce → diagnose → fix one hypothesis → re-run
+→ repeat) rather than guessing once and reporting failure.
 
 ## Why this order
 
@@ -110,30 +134,52 @@ different purposes — don't run the heavy one where the light one fits:
 |---|---|---|---|---|
 | Projects | `projects/` | Shippable end-to-end app | Full 21-stage (below) | `/run-pipeline projects <slug>` |
 | Concepts | `concepts/` | Certification-grade atomic notebook (7-part contract, user-confirmed tests) | Full 21-stage (below) | `/run-pipeline concepts <slug>` |
-| Teaching | `teaching/` | Live classroom demo, progressive multi-step (e.g. "API call → system prompt → tool call → memory → basic RAG"), meant to grow across a whole day | `teaching-brief` → `teaching-build` → `teaching-verify` (initial); `teaching-add-step` → `teaching-build` (append) → `teaching-verify` (each later addition); `teaching-debug` auto-invoked on any failure | `/new-teaching-demo`, `/run-teaching-pipeline`, then `/add-teaching-step` repeatedly |
+| Teaching | `teaching/` | Live classroom demo — progressive multi-step notebook/script **or** a full Streamlit+FastAPI app — meant to grow across a whole day | `teaching-brief` (gated checkpoints) → `teaching-build` → `teaching-verify` (initial); `teaching-add-step` → `teaching-build` (append) → `teaching-verify` (each later addition); `teaching-debug`/`project-debug` auto-invoked on any failure | `/new-teaching-demo`, `/run-teaching-pipeline`, then `/add-teaching-step` repeatedly, `/fix-bug teaching <slug> <desc>` for later bug reports |
 
-The teaching track deliberately skips the formal `clarify-requirements`,
-`write-and-validate-tests`, `security-check`, `eval-and-observability`,
-`lint-and-typecheck`, `validate-env`, `integrate-and-assemble`, and
-`deploy-config` steps — those exist to make something shippable/
-certifiable, and a live demo doesn't need that ceremony. If a specific
-teaching demo does need one of those (e.g. a security-check because a step
-queries a real database), ask for it explicitly rather than running the
-full pipeline for the whole demo.
+The teaching track deliberately skips the formal `write-and-validate-tests`
+full test-list authoring, `security-check`, `lint-and-typecheck`,
+`validate-env`, `integrate-and-assemble`, and `deploy-config` steps — those
+exist to make something shippable/certifiable, and a live demo doesn't
+need that ceremony. If a specific teaching demo does need one of those
+(e.g. a security-check because a step queries a real database), ask for it
+explicitly rather than running the full pipeline for the whole demo.
 
-It keeps three things instead, in place of that ceremony:
-- **`require-api-key`, still a hard stop.** No mock mode in this track
-  either — a real, verified provider key is mandatory before
-  `teaching-build` ever runs, same rule as the full pipeline.
-- **Paraphrase-and-confirm** before touching any file — both for the
-  initial brief (`teaching-brief`) and every later addition
-  (`teaching-add-step`). This is the track's one mandatory requirements
-  checkpoint.
-- **Automatic iterative debugging** on any failure (`teaching-debug`,
-  invoked by `teaching-verify`) — it doesn't stop at the first error, it
-  keeps trying genuinely different fixes until the artifact runs, or
-  reports exactly what's blocking it if it's genuinely stuck. A dead API
-  key is treated as a hard stop here too, not something to debug around.
+It keeps real checkpoints instead of skipping straight to code, all owned
+by `teaching-brief` and run in order by `/run-teaching-pipeline` before
+any file is generated:
+1. **Open-ended project description**, then **clarifying questions for
+   genuine gaps only** (same freeform-description parsing as
+   `write-project-brief` — don't re-ask what the description already
+   answered).
+2. **Format** — notebook/script vs full Streamlit+FastAPI app — asked
+   explicitly if not already stated.
+3. **One happy-path test case**, from the user's flow, shown for approval
+   — the lightweight track's equivalent of `write-and-validate-tests`'s
+   confirmation gate.
+4. **`require-api-key`, still a hard stop.** No mock mode in this track
+   either — a real, verified provider key is mandatory before
+   `teaching-build` ever runs, same rule as the full pipeline.
+5. **Observability** — Phoenix or none — asked if not already stated;
+   wired via `eval-and-observability`'s tracing portion if chosen.
+6. **Vector store** — ChromaDB / FAISS / Qdrant Cloud / none — asked if
+   not already stated; scaffolded via `vector-store` if chosen (Qdrant
+   Cloud credentials get the same hard-stop verification as the LLM key).
+7. **Explicit "ready to generate?" approval** before `teaching-build` runs.
+
+Plus, unchanged from before:
+- **Paraphrase-and-confirm** for every later addition
+  (`teaching-add-step`).
+- **Automatic iterative debugging** on any failure — `teaching-debug` for
+  notebook/script builds, `project-debug` for full_app builds (it already
+  covers frontend/backend/contract issues) — invoked by `teaching-verify`.
+  It doesn't stop at the first error, it keeps trying genuinely different
+  fixes until the artifact runs, or reports exactly what's blocking it if
+  it's genuinely stuck. A dead API key is treated as a hard stop here too,
+  not something to debug around.
+- **`/fix-bug teaching <slug> <description>`** for anything the user
+  reports broken after `teaching-verify` already passed once — reproduces
+  and fixes via the matching debug skill without re-running the whole
+  pipeline.
 
 ## Prompt Recipes (`prompts/`, mirrored from `.claude/commands/`)
 
@@ -144,9 +190,12 @@ It keeps three things instead, in place of that ceremony:
 | `/run-pipeline <projects\|concepts> <slug>` | Runs the entire sequence below end to end. Hard-stops if no working API key is configured, and at the clarify and test-confirmation checkpoints, and on any failing gate. |
 | `/test-project <projects\|concepts> <slug>` | Runs `run-tests` standalone — re-certifies the test gate any time, independent of a full pipeline run. |
 | `/status-project <projects\|concepts> <slug>` | Reports which stages are actually done, re-checking the filesystem/tests rather than trusting `plan.md`'s checkboxes. |
-| `/new-teaching-demo <slug>` | Drafts `teaching_brief.md` (ordered steps, notebook/script format) — the lightweight track. |
-| `/run-teaching-pipeline <slug>` | Hard-stops if no working API key first (`require-api-key`), then builds the progressive notebook/script + verifies it against the real provider; auto-debugs on failure. |
-| `/add-teaching-step <slug>` | Extends an EXISTING teaching demo — clarifies + paraphrases the new step, appends without disturbing earlier steps, re-verifies the whole artifact. Run this as many times as needed across a day. |
+| `/new-teaching-demo <slug>` | Creates the `teaching/<slug>/` folder only — no interview, no brief, no code. |
+| `/run-teaching-pipeline <slug>` | Gets the description, clarifies gaps, gates through format/happy-path/`.env`/observability/vector-store/ready-to-generate approvals, then builds (notebook/script or full Streamlit+FastAPI app) and verifies against the real provider; auto-debugs on failure. |
+| `/add-teaching-step <slug> [<feature description>]` | Extends an EXISTING teaching demo (notebook/script or full_app) — describe the new feature in plain language, gets clarified + approved before any file changes, appends without disturbing earlier functionality, re-verifies old + new together. Run this as many times as needed across a day. |
+| `/fix-bug <projects\|concepts\|teaching> <slug> <description>` | For a bug reported *after* the unit's pipeline already passed once. Reproduces it, fixes via `project-debug`/`teaching-debug`, re-certifies the relevant test/verify step(s). Don't re-run the whole pipeline for this. |
+| `/containerize <projects\|concepts\|teaching> <slug> [targets...]` | Standalone — generates Dockerfile/docker-compose.yml/Makefile for an already-verified unit. Checks Docker/Compose/Make are actually installed first and stops if not. |
+| `/assess-deployment <projects\|concepts\|teaching> <slug>` | Standalone, advisory-only — studies the project and recommends Vercel-only / Vercel + GitHub Actions / Vercel + Render-Railway with a step-by-step manual walkthrough. Generates no files, deploys nothing. |
 
 ## Quick lookup by question
 
@@ -163,9 +212,17 @@ It keeps three things instead, in place of that ceremony:
   a database, or ingests content the user didn't type directly.
 - *"Do I need `eval-and-observability`?"* → yes if it's RAG or the brief
   makes a quality/reliability claim.
-- *"My tests keep failing after a fix."* → keep fixing and re-running
-  before moving to the next `plan.md` step — a failing test blocks
-  progress, it isn't deferred.
+- *"My tests keep failing after a fix."* → `run-tests`/`run-and-verify`
+  invoke `project-debug` automatically, which iterates on real errors
+  (one hypothesis at a time, re-run, repeat) instead of guessing once and
+  stopping — keep going before moving to the next `plan.md` step.
+- *"Notebook or full frontend+backend app for a project?"* → `technical-
+  design` asks this explicitly, before `design.md` is drafted, for every
+  `projects/` unit — it never defaults silently either way.
+- *"A user found a bug after the project already shipped."* → `/fix-bug
+  <kind> <slug> <description>` — reproduces it, fixes it via
+  `project-debug`, re-certifies `run-tests` + `run-and-verify`. No need to
+  re-run the whole `/run-pipeline`.
 - *"After the app is built, how do I know the tests actually passed?"* →
   `run-tests`, owned by `integrator`, step 12. It's the one full-suite run
   with captured real output that counts — per-slice runs during build

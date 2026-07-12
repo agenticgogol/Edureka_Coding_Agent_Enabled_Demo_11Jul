@@ -45,9 +45,17 @@ For `projects/<slug>` and `concepts/<slug>`, always follow this order:
 14. Add `deploy-config` only when the brief requires deployment.
 
 For `teaching/<slug>`, use the lightweight track in `WORKFLOW.md`:
-`teaching-brief`, `require-api-key`, `teaching-build`, and
-`teaching-verify`, with `teaching-debug` on failures. Use
-`teaching-add-step` when extending an existing demo.
+`/new-teaching-demo` creates the folder only, then
+`/run-teaching-pipeline` drives `teaching-brief` through description,
+clarification, format, happy-path testcase, `.env`/real API-key
+verification, Phoenix/no-Phoenix, vector-store choice, and
+ready-to-generate approval before `teaching-build` and `teaching-verify`.
+Resume from the first incomplete checkpoint if Claude Code or Codex has
+already done part of the work. Use `teaching-debug`/`project-debug` on
+failures and `teaching-add-step` when extending an existing demo. For
+extensions, accept `/add-teaching-step <slug> <feature description>` or
+ask for the description when only `<slug>` is supplied; support both
+notebook/script and `full_app` demos.
 
 ## Ground Rules
 

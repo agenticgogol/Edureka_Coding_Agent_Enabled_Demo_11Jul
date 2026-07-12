@@ -19,22 +19,29 @@ verified it before `teaching-build` ran.
 
 ## Procedure
 
-1. Execute the notebook top to bottom (`jupyter nbconvert --to notebook
-   --execute` or equivalent) or run the script/each step file directly,
-   against the real provider.
-2. Confirm every step's output cell/print actually shows what the
-   accompanying markdown/comment claims — not just "no exceptions raised."
+1. For `notebook`/script format: execute the notebook top to bottom
+   (`jupyter nbconvert --to notebook --execute` or equivalent) or run the
+   script/each step file directly, against the real provider. For
+   `full_app` format: install fresh, launch via the run command
+   `teaching-build` recorded, and drive the exact happy-path test case
+   approved in `teaching-brief` step 4 through the real running UI/API
+   (not just "server started with no errors").
+2. Confirm every step's output cell/print (notebook) or the happy-path
+   scenario's actual UI behavior (full_app) matches what was
+   claimed/approved — not just "no exceptions raised."
 3. If the provider key ever fails mid-session (rate limit, expired,
    revoked), treat that as a hard stop, not something to route around:
    report it and re-run `require-api-key` to get a working key before
-   continuing. There is no fallback path.
-4. If any step fails for a reason other than the key itself, invoke
-   `teaching-debug` immediately — don't just report the failure and stop.
-   `teaching-debug` iterates on the real error until it's fixed (or
-   genuinely blocked, in which case it tells you exactly what's needed).
-   Once fixed, re-run the entire artifact top to bottom again, not just
-   the previously-failing step, since a fix can affect steps that depend
-   on the same code.
-5. Record in `teaching/<slug>/README.md`: how to run it (`jupyter
-   notebook notebook.ipynb` or `python app.py`), and which provider/model
-   it was verified against.
+   continuing. There is no fallback path. Same treatment for a vector
+   store credential (e.g. Qdrant Cloud) if one is in scope.
+4. If any step fails for a reason other than a key/credential, invoke the
+   debug skill matching this build's format — `teaching-debug` for
+   notebook/script, `project-debug` for `full_app` (it already knows how
+   to diagnose frontend/backend/contract issues) — immediately, don't just
+   report the failure and stop. Once fixed, re-run the entire artifact
+   (top to bottom for notebook; the full happy-path flow again for
+   full_app) since a fix can affect something that previously passed.
+5. Record in `teaching/<slug>/README.md`: how to run it (`jupyter notebook
+   notebook.ipynb` / `python app.py` / the full_app run command), and
+   which provider/model, vector store, and observability setup it was
+   verified against.

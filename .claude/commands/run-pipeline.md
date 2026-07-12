@@ -26,10 +26,13 @@ it exactly, in order, and do not skip or reorder steps. Use `TaskCreate`/
     is no mock mode in this repo — nothing past this point runs without a
     working key. Do not draft `design.md` or write any code until this
     passes.
-2. **Design** — `technical-design` (or spawn `planner`). Produce
-   `design.md`. Briefly show it to the user; proceed unless they object
-   (this is not a hard stop, just a courtesy pause — say what you're about
-   to do and give a moment to redirect).
+2. **Design** — `technical-design` (or spawn `planner`). For `projects/`,
+   this starts by **explicitly asking the user** whether they want a
+   Jupyter notebook prototype or a full frontend + FastAPI backend
+   production-style app — do not assume either. Produce `design.md`.
+   Briefly show it to the user; proceed unless they object (this is not a
+   hard stop, just a courtesy pause — say what you're about to do and give
+   a moment to redirect).
 3. **Draft and confirm tests** — `write-and-validate-tests`. Draft the
    plain-language test list. **STOP AND WAIT** for explicit user
    confirmation that the list matches their intent. This is a hard
@@ -48,8 +51,8 @@ it exactly, in order, and do not skip or reorder steps. Use `TaskCreate`/
       everything except `agent-langgraph`
    e. `frontend-nextjs` / `frontend-streamlit` / `notebook-concept`
 6. **Full test gate** — `run-tests`. Real captured pass/fail output. If
-   failures exist, fix and re-run; **do not proceed past this stage on a
-   failing suite.**
+   failures exist, invoke `project-debug` to reproduce/diagnose/fix and
+   re-run; **do not proceed past this stage on a failing suite.**
 7. **Security** — `security-check`, only if `design.md` involves tool
    calling, DB access, or untrusted-content ingestion.
 8. **Eval/observability** — `eval-and-observability`, only if `design.md`
@@ -61,12 +64,20 @@ it exactly, in order, and do not skip or reorder steps. Use `TaskCreate`/
 11. **Integrate** — `integrate-and-assemble`. Produces the single run
     command.
 12. **Verify** — `run-and-verify`. Install fresh, launch via the single run
-    command, drive one real end-to-end request. **If this fails, fix and
-    re-run — the pipeline is not done until this passes.**
+    command, drive one real end-to-end request. **If this fails, invoke
+    `project-debug` to fix and re-run — the pipeline is not done until
+    this passes.**
 13. **Review** — spawn `reviewer` (or do it inline): confirm the result
     matches `project_brief.md`'s Definition of Done, flag scope drift.
 14. **Deploy config** — `deploy-config`, only if the brief explicitly
     requires deployment.
+
+## After the pipeline completes
+
+If the user reports a bug later (after `run-and-verify` already passed
+once), use `/fix-bug <kind> <slug> <description>` rather than re-running
+this whole pipeline — it reproduces the report, fixes it via
+`project-debug`, and re-certifies `run-tests` + `run-and-verify` only.
 
 ## On failure at any stage
 

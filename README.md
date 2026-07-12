@@ -71,7 +71,9 @@ model, and the reasoning behind the ordering: see `WORKFLOW.md`.**
   (7-part notebook contract). Full pipeline.
 - `teaching/` — one folder per lightweight, progressive classroom demo
   (e.g. "API call → system prompt → tool calling → memory → basic RAG").
-  3-stage pipeline only: `/new-teaching-demo` then `/run-teaching-pipeline`.
+  Start with `/new-teaching-demo`, then `/run-teaching-pipeline` for the
+  gated description/clarification/format/happy-path/API-key/
+  observability/vector-store/code-generation flow.
 - `scripts/validate_coding_agent_demo.py` — checks every project/concept/
   teaching unit has the required files before you consider it done.
 

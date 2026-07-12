@@ -19,6 +19,17 @@ discovering contract mismatches later — nail the interfaces here.
 
 ## Procedure
 
+0. **For `projects/`, ask the build-format question explicitly before
+   writing anything** — even if the brief reads like a full app, don't
+   assume it. Ask: "Do you want this as (a) a Jupyter notebook prototype —
+   fastest to build, good for proving the logic works, or (b) a full
+   frontend + FastAPI backend production-style app?" Record the answer in
+   `design.md`'s Tech choices section. This determines whether step 2
+   below builds `notebook-concept` or the full frontend/backend stack —
+   don't default silently either way for a project, since both are
+   legitimate and the cost difference (one notebook vs. a full stack) is
+   large enough that guessing wrong wastes a full build cycle. (`concepts/`
+   skips this — it's always notebook-scale by definition.)
 1. Write `design.md` next to the brief (`projects/<slug>/design.md` or
    `concepts/<slug>/design.md`) with:
 
@@ -50,9 +61,10 @@ against it later>
 <explicitly carried over from brief's non-goals>
 ```
 
-2. For projects: default to Next.js frontend + FastAPI backend unless the
-   brief specifies otherwise (see `frontend-nextjs`, `frontend-streamlit`,
-   `backend-fastapi`). For concepts: default to a single notebook unless the
-   brief calls for a small app.
+2. For projects that chose the full-app format in step 0: default to
+   Next.js frontend + FastAPI backend unless the brief specifies otherwise
+   (see `frontend-nextjs`, `frontend-streamlit`, `backend-fastapi`). For
+   projects that chose notebook format, or for concepts: a single notebook
+   via `notebook-concept`, unless the brief calls for a small script/app.
 3. Show `design.md` to the user before calling `make-plan` — this is the
    cheapest point to change direction, before any code exists.
