@@ -1,0 +1,10 @@
+Toy Document for LangChain Document Loading Demo
+
+This is a small toy plain-text file used to demonstrate TextLoader.
+It talks about the Amazon rainforest, the same topic used throughout
+this notebook so retrieval sections stay consistent.
+
+The Amazon rainforest spans multiple South American countries and
+plays a critical role in global carbon regulation. Deforestation
+remains one of the biggest threats to the forest, driven mainly by
+cattle ranching, logging, and agricultural expansion.

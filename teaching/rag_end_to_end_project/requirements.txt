@@ -1,0 +1,40 @@
+# RAG end-to-end teaching demo — shared backend + frontend requirements.
+# Backend owns this file (heavier deps live here); frontend-builder's
+# Streamlit app also installs from this same file.
+
+# --- Backend web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+python-dotenv==1.0.1
+
+# --- LLM / embeddings / vector store ---
+openai==1.69.0  # openinference-instrumentation-openai requires >=1.69.0
+qdrant-client==1.12.2
+cohere==5.13.4          # optional: only required if embedding_model="cohere" is used
+tiktoken==0.8.0
+
+# --- Local (open-source) embeddings + reranking ---
+sentence-transformers==3.3.1
+
+# --- Ingestion: document/URL extraction ---
+pypdf==5.1.0
+beautifulsoup4==4.12.3
+requests==2.32.3
+
+# --- Observability (optional; see backend/observability.py fallback chain) ---
+# Deliberately arize-phoenix-otel (lightweight OTEL client), NOT the full
+# arize-phoenix package — the latter bundles a local Phoenix server +
+# evals + unrelated deps and forces a major fastapi/pydantic/starlette
+# upgrade that breaks this project's pins. arize-phoenix-otel is just the
+# tracer-registration client needed to send spans to Phoenix Cloud (or
+# any remote/local Phoenix collector) and installs cleanly alongside the
+# pins above. If PHOENIX_COLLECTOR_ENDPOINT is unset, observability.py
+# falls back to local Phoenix (if the full package happens to be
+# installed) or structured JSON stdout spans.
+arize-phoenix-otel==0.16.1
+openinference-instrumentation-openai==0.1.52
+
+# --- Frontend ---
+streamlit==1.41.1
