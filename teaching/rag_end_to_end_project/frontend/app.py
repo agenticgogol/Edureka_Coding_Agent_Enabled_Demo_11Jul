@@ -15,12 +15,13 @@ choices.
 from __future__ import annotations
 
 import json
+import os
 import uuid
 
 import requests
 import streamlit as st
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="RAG End-to-End Demo", page_icon="📚", layout="wide")
 st.title("📚 RAG End-to-End Teaching Demo")
