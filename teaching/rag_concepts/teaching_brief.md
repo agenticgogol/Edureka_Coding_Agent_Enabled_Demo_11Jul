@@ -85,6 +85,45 @@ beginner
 - No Phoenix observability — this is a concept-mechanics notebook, not a
   production-quality RAG demo.
 
+## Steps (retrieval_techniques.ipynb — separate companion notebook, added 2026-07-19)
+
+A second, standalone notebook focused entirely on retrieval techniques,
+with its own dummy knowledge base (`data/retrieval_kb.py`: a fictional
+drone company "Aurora Robotics" — a long structured handbook for
+parent-child/neighbor-expansion, ~20 short KB passages with metadata
+(incl. 2 intentional near-duplicates) for search/filter/rerank/dedup/MMR/
+query-transformation techniques, and a SQL product catalog for SQL
+retrieval). Every technique section: markdown (what it is / when best
+used / popularity / pros-cons / advanced-RAG-stack verdict) + runnable
+code against the Aurora data.
+
+- 17 essential techniques (all fully implemented, real calls, no mocks):
+  dense semantic retrieval, sparse BM25, hybrid retrieval, metadata
+  filtering, parent-child retrieval, neighbor expansion, Reciprocal Rank
+  Fusion, cross-encoder reranking, deduplication, MMR, query rewriting,
+  multi-query retrieval, query decomposition, relevance grading,
+  iterative retrieval, SQL retrieval (SQLite, text-to-SQL via
+  gpt-4o-mini), web fallback (real Tavily API call).
+- 9 experimental techniques (markdown + lighter runnable code example
+  each): HyDE, semantic chunking, multi-vector retrieval,
+  hypothetical-question indexing, contextualized chunks, knowledge-graph
+  retrieval, GraphRAG, LLM reranking, contextual compression.
+- Closing section: recommended end-to-end retrieval pipeline (ASCII
+  diagram) + a final combined example (query rewriting -> routing ->
+  hybrid retrieval -> RRF -> dedup -> cross-encoder rerank -> relevance
+  grading -> SQL retrieval -> generation) + a revision-summary table.
+
+Uses `OPENAI_API_KEY` (embeddings + gpt-4o-mini) and `TAVILY_API_KEY`
+(real web search for the web-fallback section), both verified via real
+calls. Local-only: `rank_bm25`, `sentence-transformers` cross-encoder,
+in-memory ChromaDB, in-memory SQLite.
+
+Verified 2026-07-19: full notebook (58 cells) executed top to bottom via
+`nbconvert --execute`, zero errors. Real bug found and fixed during
+verification: the final pipeline's generation prompt originally passed
+raw SQL tuples (`[(42,)]`), which the LLM misread as "1 unit"; fixed by
+labeling SQL rows with column names before the generation call.
+
 ## Checkpoint status
 - Description: approved
 - Clarifications: approved

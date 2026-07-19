@@ -1,10 +1,23 @@
 # RAG Concepts
 
-A progressive Jupyter notebook teaching the core building blocks of RAG, using the
-same toy text/documents throughout: chunking -> embeddings -> build-your-own
-embedding -> vector databases -> semantic/BM25/hybrid search + metadata filtering ->
-cross-encoder reranking -> MMR -> document loading -> structured output -> LCEL RAG
-chain -> conversation memory.
+Two companion Jupyter notebooks:
+
+- **`notebook.ipynb`** — the core building blocks of RAG, using the same toy
+  text/documents throughout: chunking -> embeddings -> build-your-own embedding ->
+  vector databases -> semantic/BM25/hybrid search + metadata filtering ->
+  cross-encoder reranking -> MMR -> document loading -> structured output -> LCEL
+  RAG chain -> conversation memory.
+- **`retrieval_techniques.ipynb`** — a deep dive on retrieval specifically: 17
+  essential techniques (dense, BM25, hybrid, metadata filtering, parent-child,
+  neighbor expansion, RRF, cross-encoder reranking, dedup, MMR, query rewriting,
+  multi-query, query decomposition, relevance grading, iterative retrieval, SQL
+  retrieval, web fallback) plus 9 experimental techniques (HyDE, semantic
+  chunking, multi-vector, hypothetical-question indexing, contextualized chunks,
+  knowledge-graph retrieval, GraphRAG, LLM reranking, contextual compression),
+  ending with a recommended end-to-end retrieval pipeline. Uses its own dummy
+  knowledge base (`data/retrieval_kb.py`) — a fictional drone company, Aurora
+  Robotics, with a long structured handbook, ~20 short FAQ/spec passages
+  (including 2 intentional near-duplicates), and a small SQL product catalog.
 
 ## Requirements
 
@@ -14,6 +27,8 @@ chain -> conversation memory.
   - `OPENAI_API_KEY` — used for OpenAI embeddings AND `gpt-4o-mini` chat/generation
     (structured output, LCEL RAG chain, capstone pipeline, conversation memory)
   - `QDRANT_URL` / `QDRANT_API_KEY` — used for the Qdrant Cloud vector store section
+  - `TAVILY_API_KEY` — used by `retrieval_techniques.ipynb`'s web-fallback section
+    for a real live web search call
   (`sentence-transformers`, ChromaDB, and FAISS all run locally — no other keys
   needed)
 
@@ -38,7 +53,8 @@ listed above.
 ```bash
 cd teaching/rag_concepts
 source venv/bin/activate
-jupyter notebook notebook.ipynb
+jupyter notebook notebook.ipynb              # core RAG building blocks
+jupyter notebook retrieval_techniques.ipynb  # retrieval-technique deep dive
 ```
 
 In the Jupyter UI, make sure the kernel is set to **"Python (rag_concepts)"**
@@ -121,3 +137,49 @@ both chains now produce a substantive, correct answer.
 Re-verified 2026-07-18: full notebook (13 sections, 45 cells) re-executed top to
 bottom, zero errors, all outputs inspected including the corrected RAG answers and
 the two-turn memory conversation.
+
+## New notebook: `retrieval_techniques.ipynb` (added 2026-07-19)
+
+A separate, standalone notebook (58 cells) focused entirely on retrieval, built
+against its own dummy knowledge base in `data/retrieval_kb.py` (a fictional
+drone company, "Aurora Robotics", with a long structured handbook, ~20 short
+FAQ/spec passages with metadata, two intentional near-duplicates, and a small
+SQL product catalog). Every technique section follows the same pattern: a
+markdown block (what it is / when best used / popularity / pros-cons / whether
+it belongs in an advanced-RAG stack) followed by runnable code against the
+Aurora data with printed output.
+
+- 17 essential techniques, each fully implemented: dense semantic retrieval,
+  sparse BM25, hybrid retrieval, metadata filtering, parent-child retrieval,
+  neighbor expansion, Reciprocal Rank Fusion, cross-encoder reranking,
+  deduplication, MMR, query rewriting, multi-query retrieval, query
+  decomposition, relevance grading, iterative retrieval, SQL retrieval
+  (text-to-SQL against an in-memory SQLite table), and web fallback (a real
+  Tavily API call).
+- 9 experimental techniques, each with a markdown explanation plus a runnable
+  (if lighter-weight) code example: HyDE, semantic chunking, multi-vector
+  retrieval, hypothetical-question indexing, contextualized chunks,
+  knowledge-graph retrieval, GraphRAG, LLM reranking, contextual compression.
+- Closing section: a recommended end-to-end retrieval pipeline (ASCII diagram)
+  plus a final example that runs query rewriting -> routing -> hybrid
+  retrieval -> RRF -> dedup -> cross-encoder rerank -> relevance grading ->
+  SQL retrieval -> generation on one genuinely compound question, plus a
+  revision-summary table of every technique.
+
+**Real bug found and fixed during verification:** the final combined-pipeline
+example originally passed raw SQL rows as `[(42,)]` into the generation
+prompt; the LLM misread the tuple and answered "1 unit in stock" instead of
+42. Fixed by labeling SQL results with column names (`[{'stock_units': 42}]`)
+before handing them to the LLM — re-verified the corrected answer.
+
+Verified 2026-07-19: executed top to bottom via `nbconvert --execute`, zero
+errors across all 58 cells; spot-checked SQL retrieval, web fallback (real
+Tavily results), and the final combined pipeline's output for correctness.
+
+Run it the same way as the other notebook:
+
+```bash
+source venv/bin/activate
+jupyter nbconvert --to notebook --execute --inplace retrieval_techniques.ipynb \
+  --ExecutePreprocessor.timeout=600 --ExecutePreprocessor.kernel_name=rag_concepts_venv
+```
