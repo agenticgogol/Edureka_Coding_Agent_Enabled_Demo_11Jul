@@ -9,3 +9,7 @@ dist/
 build/
 .DS_Store
 *.log
+tier6_company.db
+teaching/langgraph_basics/artifacts/notebook_runs/
+teaching/langgraph_basics/agent_memory_deepdive.sqlite
+teaching/langgraph_basics/mem0_chroma_store/

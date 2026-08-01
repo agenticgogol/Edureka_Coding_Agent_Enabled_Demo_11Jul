@@ -8,3 +8,11 @@ wikipedia
 arxiv
 ipython
 langgraph-checkpoint-sqlite>=3.1.0
+mem0ai
+chromadb
+sentence-transformers
+tiktoken
+nbconvert
+arize-phoenix
+arize-phoenix-client
+openinference-instrumentation-langchain
