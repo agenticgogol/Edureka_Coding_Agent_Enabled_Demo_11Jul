@@ -45,18 +45,35 @@ that as a gift, not noise:
 ## Procedure
 
 1. If the user's request is already a detailed technical description, run
-   "Handling a detailed freeform description" above first. Otherwise ask,
-   one question at a time or as a short batch, for:
+   "Handling a detailed freeform description" above first. Otherwise ask, as
+   a short numbered batch, for:
    - What problem does this solve, and for whom (technical or non-technical
      end user)?
    - What does "done" look like — the one demo scenario that must work?
    - Any explicit tech constraints (framework, must-use API, must avoid paid
      services)?
    - Any explicit non-goals (things it should *not* do)?
-2. Do not fill gaps with assumptions — if the user says "not sure," leave it
-   open and flag it for the `clarify-requirements` skill later rather than
-   guessing. Never re-ask something the user's original description already
-   answered.
+
+   Even at this rough-idea stage, never ask a bare open-ended question when
+   a reasonable set of options exists. For each item, give 2-4 concrete
+   options plus a recommended default and a one-line reason, e.g.:
+   - "Who's this for — technical users comfortable with a CLI, or
+     non-technical end users needing a polished UI? Recommend non-technical
+     UI (Streamlit) unless you tell me otherwise, since that's this repo's
+     default demo shape."
+   - "Any tech constraints — specific LLM provider (OpenAI/Anthropic/Groq),
+     must avoid paid APIs, must use a particular framework? Recommend
+     Anthropic via `_shared/llm_client.py` (this repo's default) unless you
+     need something else."
+
+   Only "what problem/for whom" and "what does done look like" are
+   genuinely open-ended (they're about the user's intent, not a technical
+   choice) — options don't apply there. Everything with a defensible default
+   gets options.
+2. Do not fill gaps with assumptions — if the user says "not sure," accept
+   the recommended default explicitly (record it, don't leave it silently
+   unresolved) rather than guessing without saying so. Never re-ask
+   something the user's original description already answered.
 3. Create `projects/<slug>/project_brief.md` with this shape:
 
 ```markdown
