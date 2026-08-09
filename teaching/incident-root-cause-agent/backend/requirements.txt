@@ -1,0 +1,6 @@
+# Backend (FastAPI) requirements. Also includes backend/agent/requirements.txt's
+# pins since main.py imports backend.agent.interface directly (same process).
+-r agent/requirements.txt
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2,<3
