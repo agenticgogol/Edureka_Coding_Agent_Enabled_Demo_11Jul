@@ -1,0 +1,4 @@
+# Test-only dependencies. Not installed in the production Docker images
+# (Dockerfile.backend/Dockerfile.frontend only install backend/frontend
+# requirements.txt) — tests run from the dev venv only.
+pytest>=8,<10

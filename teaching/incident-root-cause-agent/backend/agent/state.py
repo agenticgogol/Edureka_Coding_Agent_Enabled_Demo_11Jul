@@ -52,6 +52,10 @@ class AgentState(TypedDict, total=False):
     # Human approval (interrupt payload / resume decision)
     approval_status: Literal["pending", "approved", "rejected"] | None
     rejection_note: str | None
+    # Stamped by code_issue_path/retry_draft_patch (durable across the
+    # interrupt/resume pause) so human_approval can compute + trace the
+    # real wall-clock wait time — see graph.py's human_approval comment.
+    approval_requested_at: float | None
 
     # Post-approval execution leg
     apply_result: dict | None

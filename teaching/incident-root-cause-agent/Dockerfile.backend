@@ -1,0 +1,29 @@
+# Backend (FastAPI + LangGraph agent) image.
+# Build from teaching/incident-root-cause-agent/:
+#   docker build -f Dockerfile.backend -t incident-agent-backend .
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# `uvx` is used to launch the isolated mcp-atlassian stdio server. The
+# agent's sandboxed test runs use only the stdlib `resource` module.
+
+COPY backend/requirements.txt backend/requirements.txt
+COPY backend/agent/requirements.txt backend/agent/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt uv
+
+COPY backend/ backend/
+COPY data/ data/
+
+# Runs as a non-root user — the backend only needs write access to data/db
+# and data/jira, and read/write access to data/repos (patches are applied
+# there); nothing here needs root.
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -21,24 +21,11 @@ from dataclasses import dataclass
 INT16_MIN = -32768
 INT16_MAX = 32767
 
-
 @dataclass
 class CartItem:
     sku: str
     unit_price_cents: int
     quantity: int
-
-
-def _wrap_16bit(value: int) -> int:
-    """Emulate signed 16-bit integer wraparound (the seeded bug).
-
-    Real-world equivalent: a checkout service written in a language with
-    fixed-width integers (e.g. int16/short) whose running-total accumulator
-    was never upgraded to a wider type as cart sizes grew.
-    """
-    range_size = INT16_MAX - INT16_MIN + 1
-    wrapped = (value - INT16_MIN) % range_size + INT16_MIN
-    return wrapped
 
 
 def calculate_cart_total(items: list[CartItem]) -> int:
@@ -58,9 +45,8 @@ def calculate_cart_total(items: list[CartItem]) -> int:
     total = 0
     for item in items:
         line_total = item.unit_price_cents * item.quantity
-        total = _wrap_16bit(total + line_total)
+        total += line_total  # Changed this line to remove _wrap_16bit call
     return total
-
 
 def calculate_item_count(items: list[CartItem]) -> int:
     return sum(item.quantity for item in items)

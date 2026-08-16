@@ -1,0 +1,55 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?set OPENAI_API_KEY in .env — no mock mode}
+      - INCIDENT_AGENT_API_KEYS=${INCIDENT_AGENT_API_KEYS:?set INCIDENT_AGENT_API_KEYS in .env}
+      - INCIDENT_AGENT_MODEL=${INCIDENT_AGENT_MODEL:-gpt-4o-mini}
+      - INCIDENT_AGENT_EMBEDDING_MODEL=${INCIDENT_AGENT_EMBEDDING_MODEL:-text-embedding-3-small}
+      - INCIDENT_AGENT_MAX_TOKENS_PER_INCIDENT=${INCIDENT_AGENT_MAX_TOKENS_PER_INCIDENT:-60000}
+      - INCIDENT_AGENT_RATE_LIMIT_PER_MIN=${INCIDENT_AGENT_RATE_LIMIT_PER_MIN:-10}
+      - JIRA_URL=${JIRA_URL:-}
+      - JIRA_USERNAME=${JIRA_USERNAME:-}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN:-}
+      - JIRA_PERSONAL_TOKEN=${JIRA_PERSONAL_TOKEN:-}
+      - JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY:-SCRUM}
+      - INCIDENT_AGENT_JIRA_ISSUE_TYPE=${INCIDENT_AGENT_JIRA_ISSUE_TYPE:-Task}
+      - INCIDENT_AGENT_JIRA_DONE_TRANSITION_NAME=${INCIDENT_AGENT_JIRA_DONE_TRANSITION_NAME:-Done}
+      - INCIDENT_AGENT_MCP_ATLASSIAN_PACKAGE=${INCIDENT_AGENT_MCP_ATLASSIAN_PACKAGE:-mcp-atlassian>=0.22.0}
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN:-}
+      - INCIDENT_AGENT_GITHUB_MCP_URL=${INCIDENT_AGENT_GITHUB_MCP_URL:-https://api.githubcopilot.com/mcp/}
+      - INCIDENT_AGENT_GITHUB_MAX_SCAN_FILES=${INCIDENT_AGENT_GITHUB_MAX_SCAN_FILES:-40}
+      - PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT:-}
+      - PHOENIX_API_KEY=${PHOENIX_API_KEY:-}
+    volumes:
+      # Named volume, not a bind mount: data/db and data/jira are runtime
+      # state (sqlite files + mocked ticket store), not source — keeping
+      # them in a volume survives container recreation without polluting
+      # the build context or host repo checkout with runtime artifacts.
+      - incident_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - INCIDENT_AGENT_API_KEY=${INCIDENT_AGENT_API_KEY:?set INCIDENT_AGENT_API_KEY in .env — must match a value in backend's INCIDENT_AGENT_API_KEYS}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  incident_data:

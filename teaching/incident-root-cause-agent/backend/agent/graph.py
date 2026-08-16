@@ -20,16 +20,20 @@ call and a resumed `Command(resume=...)`.
 from __future__ import annotations
 
 import json
+import sqlite3
 import time
+from contextlib import closing, contextmanager
 from typing import Any
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command, interrupt
 
-from . import db, tools
+from . import tools, tracing
+from .budget import TokenBudgetExceededError
 from .config import CHECKPOINT_DB_PATH, REASONING_MODEL
 from .llm import chat_with_tools, complete_json
+from .progress import emit_progress
 from .repos import list_repo_files
 from .state import AgentState
 
@@ -76,7 +80,19 @@ def _find_test_file(repo: str) -> str | None:
 
 
 def precedent_check(state: AgentState) -> AgentState:
-    match = tools.search_similar_incidents(state["incident_text"])
+    emit_progress("Checking for similar past incidents...")
+    with tracing.span("graph.precedent_check", incident_id=state.get("incident_id")) as sp:
+        match = tools.search_similar_incidents(state["incident_text"])
+        if sp:
+            sp.set_attribute("precedent_found", match is not None)
+            if match:
+                sp.set_attribute("precedent_similarity", match.get("similarity"))
+    if match:
+        emit_progress(
+            f"Found a similar past incident ({match['similarity']:.0%} match) in {match.get('identified_repo')}"
+        )
+    else:
+        emit_progress("No similar past incident found.")
     return {
         **state,
         "matched_precedent": match,
@@ -88,6 +104,15 @@ def precedent_check(state: AgentState) -> AgentState:
 
 
 def analyze(state: AgentState) -> AgentState:
+    with tracing.span("graph.analyze", incident_id=state.get("incident_id")) as sp:
+        result = _analyze_impl(state)
+        if sp:
+            sp.set_attribute("escalated", bool(result.get("escalated")))
+            sp.set_attribute("tool_calls_used", result.get("analysis_tool_calls", 0))
+        return result
+
+
+def _analyze_impl(state: AgentState) -> AgentState:
     remaining = ANALYSIS_STEP_CEILING - state.get("analysis_tool_calls", 0)
     if remaining <= 0:
         return {
@@ -95,6 +120,8 @@ def analyze(state: AgentState) -> AgentState:
             "escalated": True,
             "escalation_reason": "step ceiling reached before analysis could start",
         }
+
+    emit_progress("Starting root-cause analysis...")
 
     precedent = state.get("matched_precedent")
     precedent_note = ""
@@ -129,6 +156,13 @@ def analyze(state: AgentState) -> AgentState:
                 tool_choice="required",
                 model=REASONING_MODEL,
             )
+        except TokenBudgetExceededError:
+            # NOT a transient failure — retrying here would spend MORE
+            # tokens right through a budget that's already been exceeded.
+            # Propagate immediately so interface.py's incident_budget()
+            # handler ends the run cleanly instead of the loop paying for
+            # 1-2 more real LLM calls first.
+            raise
         except Exception as exc:  # transient tool/provider failure
             if transient_retries_used >= TRANSIENT_RETRY_LIMIT:
                 return {
@@ -188,30 +222,49 @@ def analyze(state: AgentState) -> AgentState:
 
         if fn_name == "finish_analysis":
             if not fn_args.get("confident", False):
+                emit_progress("Could not confidently determine a root cause.")
                 return {
                     **state,
                     "analysis_tool_calls": analysis_calls,
                     "escalated": True,
                     "escalation_reason": "model reported low confidence in root cause",
                 }
+            identified_repo = fn_args.get("identified_repo") or (precedent or {}).get("identified_repo")
+            identified_file = fn_args.get("identified_file") or (precedent or {}).get("identified_file")
+            emit_progress(f"Analysis complete — identified {identified_repo}/{identified_file}")
             return {
                 **state,
-                "identified_repo": fn_args.get("identified_repo") or (precedent or {}).get("identified_repo"),
-                "identified_file": fn_args.get("identified_file") or (precedent or {}).get("identified_file"),
+                "identified_repo": identified_repo,
+                "identified_file": identified_file,
                 "root_cause": fn_args.get("root_cause"),
                 "evidence_excerpt": fn_args.get("evidence_excerpt"),
                 "analysis_tool_calls": analysis_calls,
                 "escalated": False,
             }
 
+        _PROGRESS_LABELS = {
+            "list_repos": "Listing available repositories...",
+            "search_code": f"Searching {fn_args.get('repo', '?')} for \"{fn_args.get('pattern', '')}\"...",
+            "read_file": f"Reading {fn_args.get('repo', '?')}/{fn_args.get('path', '?')}...",
+        }
+        emit_progress(_PROGRESS_LABELS.get(fn_name, f"Calling {fn_name}..."))
+
         impl = tools.READ_ONLY_TOOL_IMPLS.get(fn_name)
-        if impl is None:
-            tool_result: Any = {"error": f"unknown tool {fn_name}"}
-        else:
-            try:
-                tool_result = impl(**fn_args)
-            except Exception as exc:  # e.g. PathEscapeError, InvalidRepoError
-                tool_result = {"error": str(exc)}
+        with tracing.span(f"tool.{fn_name}", **{f"arg.{k}": v for k, v in fn_args.items()}) as tool_span:
+            if impl is None:
+                tool_result: Any = {"error": f"unknown tool {fn_name}"}
+                if tool_span:
+                    tool_span.set_attribute("error", True)
+            else:
+                try:
+                    tool_result = impl(**fn_args)
+                    if tool_span and isinstance(tool_result, list):
+                        tool_span.set_attribute("result_count", len(tool_result))
+                except Exception as exc:  # e.g. PathEscapeError, InvalidRepoError
+                    tool_result = {"error": str(exc)}
+                    if tool_span:
+                        tool_span.set_attribute("error", True)
+                        tool_span.set_attribute("error_message", str(exc))
 
         analysis_calls += 1
         messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
@@ -235,6 +288,15 @@ def analyze(state: AgentState) -> AgentState:
 
 
 def classify(state: AgentState) -> AgentState:
+    with tracing.span("graph.classify", incident_id=state.get("incident_id")) as sp:
+        result = _classify_impl(state)
+        if sp:
+            sp.set_attribute("classification", result.get("classification"))
+        return result
+
+
+def _classify_impl(state: AgentState) -> AgentState:
+    emit_progress("Classifying incident (code issue vs. infra issue)...")
     system = (
         "You classify a diagnosed incident. Return a JSON object with keys "
         "`classification` (exactly 'code-issue' or 'infra-issue') and "
@@ -251,6 +313,7 @@ def classify(state: AgentState) -> AgentState:
     if classification not in ("code-issue", "infra-issue"):
         classification = "code-issue"  # conservative default; still human-gated before apply
 
+    emit_progress(f"Classified as: {classification}")
     update: AgentState = {**state, "classification": classification}
     if classification == "infra-issue":
         update["infra_message"] = result.get(
@@ -265,40 +328,55 @@ def classify(state: AgentState) -> AgentState:
 
 
 def code_issue_path(state: AgentState) -> AgentState:
-    calls_used = state.get("analysis_tool_calls", 0)
-    if calls_used + 2 > ANALYSIS_STEP_CEILING:
+    with tracing.span("graph.code_issue_path", incident_id=state.get("incident_id")):
+        calls_used = state.get("analysis_tool_calls", 0)
+        if calls_used + 2 > ANALYSIS_STEP_CEILING:
+            return {
+                **state,
+                "escalated": True,
+                "escalation_reason": "step ceiling reached before patch could be drafted",
+            }
+
+        emit_progress(f"Drafting patch for {state['identified_repo']}/{state['identified_file']}...")
+        patch = tools.draft_patch(
+            repo=state["identified_repo"],
+            path=state["identified_file"],
+            incident_text=state["incident_text"],
+            root_cause=state["root_cause"] or "",
+        )
+        emit_progress("Creating Jira ticket...")
+        ticket = tools.create_jira_ticket(
+            incident_id=state["incident_id"],
+            summary=f"[{state['identified_repo']}] {state['incident_text'][:80]}",
+            description=(
+                f"Incident: {state['incident_text']}\n"
+                f"Repository: {state['identified_repo']}\n"
+                f"File: {state['identified_file']}\n\n"
+                f"Root cause: {state['root_cause']}\n\n"
+                f"Proposed fix: {patch['explanation']}\n\n"
+                "Patch (unified diff):\n"
+                f"{patch['diff']}"
+            ),
+        )
+        emit_progress(f"Ticket {ticket['ticket_id']} created — awaiting your approval.")
         return {
             **state,
-            "escalated": True,
-            "escalation_reason": "step ceiling reached before patch could be drafted",
+            "analysis_tool_calls": calls_used + 2,
+            "drafted_patch": patch,
+            "ticket_id": ticket["ticket_id"],
+            "approval_status": "pending",
+            # Recorded so human_approval can report real wait duration —
+            # see that node's comment for why this can't just be the
+            # span's own timer (the node re-executes across the pause).
+            "approval_requested_at": time.time(),
         }
-
-    patch = tools.draft_patch(
-        repo=state["identified_repo"],
-        path=state["identified_file"],
-        incident_text=state["incident_text"],
-        root_cause=state["root_cause"] or "",
-    )
-    ticket = tools.create_jira_ticket(
-        incident_id=state["incident_id"],
-        summary=f"[{state['identified_repo']}] {state['incident_text'][:80]}",
-        description=(
-            f"Root cause: {state['root_cause']}\n\nProposed fix:\n{patch['explanation']}"
-        ),
-    )
-    return {
-        **state,
-        "analysis_tool_calls": calls_used + 2,
-        "drafted_patch": patch,
-        "ticket_id": ticket["ticket_id"],
-        "approval_status": "pending",
-    }
 
 
 # --- Node: infra_path ---------------------------------------------------------
 
 
 def infra_path(state: AgentState) -> AgentState:
+    emit_progress("Resolved as an infra/setup issue — no code patch needed.")
     return {
         **state,
         "outcome": "infra_resolved",
@@ -311,6 +389,7 @@ def infra_path(state: AgentState) -> AgentState:
 
 
 def escalate(state: AgentState) -> AgentState:
+    emit_progress("Escalating — could not confidently determine root cause within budget.")
     partial = {
         "identified_repo": state.get("identified_repo"),
         "identified_file": state.get("identified_file"),
@@ -344,7 +423,24 @@ def human_approval(state: AgentState) -> AgentState:
             "ticket_id": state.get("ticket_id"),
         }
     )
+    # This node re-executes from the top on resume (interrupt() replays
+    # via the checkpoint rather than continuing mid-function), so a span
+    # opened before interrupt() would only ever measure the near-instant
+    # post-resume execution, not the real human wait time — which could
+    # be seconds or days. approval_requested_at was stamped into state by
+    # code_issue_path/retry_draft_patch (durable across the pause);
+    # compute the real elapsed wait here and log it as a span EVENT
+    # (rather than span duration) so it's visible in the trace regardless.
+    requested_at = state.get("approval_requested_at")
+    wait_seconds = (time.time() - requested_at) if requested_at else None
     approved = bool(decision.get("approved", False))
+    with tracing.span(
+        "graph.human_approval",
+        incident_id=state.get("incident_id"),
+        approved=approved,
+        approval_wait_seconds=wait_seconds,
+    ):
+        pass
     return {
         **state,
         "approval_status": "approved" if approved else "rejected",
@@ -357,7 +453,13 @@ def human_approval(state: AgentState) -> AgentState:
 
 def apply_patch_node(state: AgentState) -> AgentState:
     patch = state["drafted_patch"]
-    result = tools.apply_patch(patch["repo"], patch["path"], patch["new_content"])
+    emit_progress(f"Applying patch to {patch['repo']}/{patch['path']}...")
+    with tracing.span(
+        "graph.apply_patch", incident_id=state.get("incident_id"), repo=patch["repo"], path=patch["path"]
+    ) as sp:
+        result = tools.apply_patch(patch["repo"], patch["path"], patch["new_content"])
+        if sp:
+            sp.set_attribute("applied", result.get("applied"))
     return {
         **state,
         "apply_result": result,
@@ -371,10 +473,18 @@ def apply_patch_node(state: AgentState) -> AgentState:
 def run_tests_node(state: AgentState) -> AgentState:
     repo = state["drafted_patch"]["repo"]
     test_file = _find_test_file(repo)
-    if test_file is None:
-        result = {"passed": False, "stdout": "", "stderr": "no test file found for repo", "returncode": -1}
-    else:
-        result = tools.run_tests(repo, test_file)
+    emit_progress(f"Running tests for {repo}...")
+    with tracing.span(
+        "graph.run_tests", incident_id=state.get("incident_id"), repo=repo, test_file=test_file
+    ) as sp:
+        if test_file is None:
+            result = {"passed": False, "stdout": "", "stderr": "no test file found for repo", "returncode": -1}
+        else:
+            result = tools.run_tests(repo, test_file)
+        if sp:
+            sp.set_attribute("passed", result.get("passed"))
+            sp.set_attribute("returncode", result.get("returncode"))
+    emit_progress("Tests passed." if result.get("passed") else "Tests failed.")
     return {
         **state,
         "test_result": result,
@@ -386,10 +496,15 @@ def run_tests_node(state: AgentState) -> AgentState:
 
 
 def close_ticket_node(state: AgentState) -> AgentState:
-    ticket = tools.close_jira_ticket(
-        state["ticket_id"],
-        resolution_note="Patch applied and tied test(s) passed.",
-    )
+    emit_progress(f"Closing ticket {state.get('ticket_id')}...")
+    with tracing.span(
+        "graph.close_ticket", incident_id=state.get("incident_id"), ticket_id=state.get("ticket_id")
+    ):
+        ticket = tools.close_jira_ticket(
+            state["ticket_id"],
+            resolution_note="Patch applied and tied test(s) passed.",
+        )
+    emit_progress("Done — patch applied, tests passed, ticket closed.")
     return {
         **state,
         "execution_tool_calls": state.get("execution_tool_calls", 0) + 1,
@@ -406,20 +521,25 @@ def close_ticket_node(state: AgentState) -> AgentState:
 
 
 def retry_draft_patch(state: AgentState) -> AgentState:
-    patch = tools.draft_patch(
-        repo=state["drafted_patch"]["repo"],
-        path=state["drafted_patch"]["path"],
-        incident_text=state["incident_text"],
-        root_cause=state["root_cause"] or "",
-        failing_test_output=(state.get("test_result") or {}).get("stdout", "")
-        + "\n"
-        + (state.get("test_result") or {}).get("stderr", ""),
-    )
+    emit_progress("Tests failed — drafting a revised patch...")
+    with tracing.span("graph.retry_draft_patch", incident_id=state.get("incident_id")):
+        patch = tools.draft_patch(
+            repo=state["drafted_patch"]["repo"],
+            path=state["drafted_patch"]["path"],
+            incident_text=state["incident_text"],
+            root_cause=state["root_cause"] or "",
+            failing_test_output=(state.get("test_result") or {}).get("stdout", "")
+            + "\n"
+            + (state.get("test_result") or {}).get("stderr", ""),
+        )
     return {
         **state,
         "drafted_patch": patch,
         "draft_retry_used": True,
         "approval_status": "pending",
+        # Re-entering human_approval — needs its own fresh timestamp so the
+        # wait-duration metric measures THIS approval round, not the first.
+        "approval_requested_at": time.time(),
     }
 
 
@@ -427,7 +547,8 @@ def retry_draft_patch(state: AgentState) -> AgentState:
 
 
 def reject_end(state: AgentState) -> AgentState:
-    db.reject_ticket(state["ticket_id"], state.get("rejection_note") or "rejected by reviewer")
+    emit_progress("Rejected — ticket left open, no patch applied.")
+    tools.reject_jira_ticket(state["ticket_id"], state.get("rejection_note") or "rejected by reviewer")
     return {
         **state,
         "outcome": "rejected",
@@ -436,6 +557,7 @@ def reject_end(state: AgentState) -> AgentState:
 
 
 def test_failed_end(state: AgentState) -> AgentState:
+    emit_progress("Revised patch still failed tests — left for manual follow-up.")
     return {
         **state,
         "outcome": "test_failed_after_retry",
@@ -537,10 +659,44 @@ def build_graph(checkpointer):
     return graph.compile(checkpointer=checkpointer)
 
 
+@contextmanager
 def get_checkpointer_cm():
     """Returns the SqliteSaver context manager backing graph state across
     the (potentially indefinite) human-approval pause, and across a real
     process restart, per design.md's runtime shape. Callers must use this
-    as a context manager (`with get_checkpointer_cm() as saver:`) exactly
-    like `SqliteSaver.from_conn_string` requires."""
-    return SqliteSaver.from_conn_string(str(CHECKPOINT_DB_PATH))
+    as a context manager (`with get_checkpointer_cm() as saver:`).
+
+    Builds the connection manually (rather than
+    `SqliteSaver.from_conn_string`, which uses sqlite3 defaults) so WAL
+    mode + a busy_timeout can be set — FastAPI's sync routes run each
+    request in a threadpool, so concurrent submit_incident/approve_incident
+    calls genuinely can hit this DB at the same time. Without WAL mode,
+    SQLite's default rollback-journal locking serializes ALL access
+    (readers block writers); with WAL, readers don't block the writer, and
+    busy_timeout makes a writer-vs-writer collision retry for up to 5s
+    instead of immediately raising `sqlite3.OperationalError: database is
+    locked`.
+    """
+    conn = sqlite3.connect(str(CHECKPOINT_DB_PATH), check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    with closing(conn):
+        yield SqliteSaver(conn)
+
+
+def clear_all_checkpoints() -> int:
+    """Wipes every thread's checkpoint/write rows. Part of the UI's
+    'Reset history' action — without this, old thread_ids would keep
+    resolvable (but orphaned) graph state after their audit-table row is
+    deleted, so a stale thread_id could still be resumed/approved even
+    though it no longer appears anywhere in the incident history. Same
+    irreversible/no-confirmation-here contract as db.py's delete_all_*."""
+    conn = sqlite3.connect(str(CHECKPOINT_DB_PATH), check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
+    with closing(conn):
+        count = conn.execute("SELECT COUNT(DISTINCT thread_id) FROM checkpoints").fetchone()[0]
+        conn.execute("DELETE FROM writes")
+        conn.execute("DELETE FROM checkpoints")
+        conn.commit()
+        return count

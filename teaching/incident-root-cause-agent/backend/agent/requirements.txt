@@ -2,3 +2,11 @@ langgraph>=1.2,<2
 langgraph-checkpoint-sqlite>=3.1,<4
 openai>=1.0
 python-dotenv>=1.0
+mcp>=1.8,<3
+tenacity>=8.2,<9
+
+# Optional: Phoenix tracing (backend/agent/tracing.py). No-op if
+# PHOENIX_COLLECTOR_ENDPOINT is unset in .env, but these packages must be
+# installed for tracing.py to actually enable it when it is set.
+arize-phoenix-otel>=0.6
+openinference-instrumentation-openai>=0.1

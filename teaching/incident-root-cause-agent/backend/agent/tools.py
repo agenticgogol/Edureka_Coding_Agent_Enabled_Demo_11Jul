@@ -19,18 +19,26 @@ from __future__ import annotations
 import difflib
 import json
 import math
+import os
 import re
+import resource
 import subprocess
 import sys
 import uuid
 from pathlib import Path
 
-from . import db
-from .config import ALLOWED_REPOS, REASONING_MODEL
+from . import db, mcp_jira
+from .config import (
+    ALLOWED_REPOS,
+    PRECEDENT_SIMILARITY_THRESHOLD,
+    REASONING_MODEL,
+    RUN_TESTS_MAX_CPU_SECONDS,
+    RUN_TESTS_MAX_MEMORY_BYTES,
+    RUN_TESTS_TIMEOUT_SECONDS,
+    config,
+)
 from .llm import complete_json, embed
 from .repos import list_repo_files, repo_root, safe_repo_path
-
-PRECEDENT_SIMILARITY_THRESHOLD = 0.80
 
 
 # --- 1. search_similar_incidents -------------------------------------------
@@ -127,19 +135,95 @@ def read_file(repo: str, path: str) -> str:
 # --- 5. run_tests ----------------------------------------------------------
 
 
+def _sandbox_preexec() -> None:
+    """Runs in the child process after fork(), before exec() — applies
+    OS-level resource limits to whatever `run_tests` executes next.
+
+    This is PROCESS-LEVEL HARDENING, not full sandboxing. What it does and
+    does not protect against:
+
+    - Caps CPU time (RLIMIT_CPU) and address space (RLIMIT_AS) so a test
+      file with an infinite loop or a memory-bomb gets killed by the OS
+      instead of degrading the whole backend host.
+    - Caps subprocess count (RLIMIT_NPROC) to block fork-bomb-style code.
+    - Disables core dumps (RLIMIT_CORE) so a crash doesn't write a
+      potentially sensitive memory dump to disk.
+    - Does NOT block filesystem access outside the repo directory — the
+      test file still runs as the same OS user as the backend process, so
+      it can read/write anything that user can (repo path safety in
+      repos.py stops the AGENT from requesting an out-of-repo path, but
+      code the test file itself executes is not confined to the repo).
+    - Does NOT block network access — a malicious test file can still make
+      outbound connections.
+    - Does NOT provide a separate filesystem/PID/network namespace.
+
+    Real isolation for arbitrary/untrusted repos (vs. this demo's fixed
+    synthetic fixtures) requires running the test in a container or
+    microVM with `--network=none`, a read-only root filesystem plus a
+    throwaway writable scratch dir, and cgroup limits (Docker/gVisor/
+    Firecracker/nsjail) — not achievable from within the same host process
+    via `resource.setrlimit` alone. That's the production upgrade path;
+    this function is the floor, not the ceiling.
+
+    Each limit is applied best-effort: macOS in particular rejects
+    RLIMIT_AS in some configurations ("current limit exceeds maximum
+    limit") even though the request is well-formed — that's a platform
+    quirk, not a reason to fail every test run outright. A limit that
+    can't be set on this platform is simply skipped; CPU/NPROC/CORE are
+    the load-bearing ones on Linux (where this runs in production).
+    """
+    for limit_id, values in (
+        (resource.RLIMIT_CPU, (RUN_TESTS_MAX_CPU_SECONDS, RUN_TESTS_MAX_CPU_SECONDS)),
+        (resource.RLIMIT_AS, (RUN_TESTS_MAX_MEMORY_BYTES, RUN_TESTS_MAX_MEMORY_BYTES)),
+        (resource.RLIMIT_NPROC, (16, 16)),
+        (resource.RLIMIT_CORE, (0, 0)),
+    ):
+        try:
+            resource.setrlimit(limit_id, values)
+        except (ValueError, OSError):
+            pass  # platform doesn't support/allow this specific limit
+
+
 def run_tests(repo: str, test_file: str) -> dict:
     """Execute the specific synthetic test file tied to an incident (a
     plain `python3 <test_file>` run, self-contained — see each repo's
-    test_*.py `__main__` block). Returns pass/fail plus captured output."""
+    test_*.py `__main__` block). Returns pass/fail plus captured output.
+
+    Hardened (see `_sandbox_preexec` for exactly what this does and does
+    not cover): CPU/memory/process-count rlimits, a wall-clock timeout, and
+    a scrubbed environment (no OPENAI_API_KEY / PHOENIX_API_KEY / auth
+    secrets passed through to the child process) — a test file has no
+    business reading this backend's credentials."""
     full_path = safe_repo_path(repo, test_file)
     root = repo_root(repo)
-    result = subprocess.run(
-        [sys.executable, str(full_path)],
-        cwd=str(root),
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
+
+    scrubbed_env = {
+        k: v
+        for k, v in os.environ.items()
+        if not any(
+            secret in k.upper()
+            for secret in ("API_KEY", "SECRET", "TOKEN", "PASSWORD", "PHOENIX")
+        )
+    }
+
+    try:
+        result = subprocess.run(
+            [sys.executable, str(full_path)],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=RUN_TESTS_TIMEOUT_SECONDS,
+            env=scrubbed_env,
+            preexec_fn=_sandbox_preexec if sys.platform != "win32" else None,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "passed": False,
+            "stdout": (exc.stdout or b"").decode() if isinstance(exc.stdout, bytes) else (exc.stdout or ""),
+            "stderr": f"test run killed after exceeding {RUN_TESTS_TIMEOUT_SECONDS}s wall-clock timeout",
+            "returncode": -1,
+        }
+
     return {
         "passed": result.returncode == 0,
         "stdout": result.stdout,
@@ -217,10 +301,26 @@ def draft_patch(
 
 
 def create_jira_ticket(incident_id: str, summary: str, description: str) -> dict:
-    """Mocked — appends to the local JSON ticket store. Ticket key is
-    derived from the incident id, so a retry that calls this again for the
-    same incident is a no-op (idempotent per stage 4's tool table)."""
-    ticket_id = f"TCKT-{incident_id[:8]}"
+    """Creates the incident's ticket — a REAL Jira issue via MCP
+    (backend/agent/mcp_jira.py) when real Jira credentials are set
+    (config.jira_enabled), otherwise the mocked local JSON
+    store, exactly as before. Either way the result is ALSO mirrored into
+    the local store keyed by the real (e.g. 'SCRUM-42') or synthetic
+    ('TCKT-xxxxxxxx') ticket_id, so every downstream consumer (audit
+    table, UI, close/reject) needs no branching of its own — they just
+    look up ticket_id.
+
+    Idempotency: real Jira's create call has no built-in idempotency the
+    way the mock's incident-id-derived ticket_id gave it — but this
+    function is only ever called once per incident, from code_issue_path
+    (the analysis retry loop and the post-approval draft_patch retry
+    never call it again), so that's a structural guarantee, not something
+    engineered around here."""
+    if config.jira_enabled:
+        issue = mcp_jira.create_issue(summary=summary, description=description)
+        ticket_id = issue["key"]
+    else:
+        ticket_id = f"TCKT-{incident_id[:8]}"
     return db.create_ticket(ticket_id, incident_id, summary, description)
 
 
@@ -248,7 +348,26 @@ def apply_patch(repo: str, path: str, new_content: str) -> dict:
 
 
 def close_jira_ticket(ticket_id: str, resolution_note: str) -> dict:
+    """Closes the ticket — real Jira: transitions it to
+    INCIDENT_AGENT_JIRA_DONE_TRANSITION_NAME (default 'Done') and adds
+    resolution_note as a comment; mock: unchanged local behavior. Real
+    Jira failures (e.g. no matching transition on this project's
+    workflow) raise mcp_jira.JiraMCPError — NOT caught here, so the
+    close_ticket_node in graph.py fails loudly rather than marking a
+    ticket "closed" locally that's actually still open in real Jira."""
+    if config.jira_enabled:
+        mcp_jira.close_issue(ticket_id, resolution_note)
     return db.close_ticket(ticket_id, resolution_note)
+
+
+def reject_jira_ticket(ticket_id: str, rejection_note: str) -> dict:
+    """Records a rejection — real Jira: adds a comment WITHOUT
+    transitioning status, so the ticket stays open exactly like the
+    mock's reject_ticket (which leaves the local record open too, only
+    storing the rejection note)."""
+    if config.jira_enabled:
+        mcp_jira.add_comment(ticket_id, f"Patch rejected: {rejection_note}")
+    return db.reject_ticket(ticket_id, rejection_note)
 
 
 # --- OpenAI tool-calling schemas for the bounded search/analysis loop ------
