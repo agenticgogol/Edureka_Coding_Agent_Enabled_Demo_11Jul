@@ -92,3 +92,54 @@ call. If that fails, nothing gets built until you fix it.
 Each project/concept manages its own `requirements.txt` / `package.json` —
 there is no single monorepo dependency file by design, since projects are
 meant to be independently runnable and deployable.
+
+## Eval toolkit
+
+A separate Claude Code toolkit for building and running an eval suite
+against any agent (a scaffolded demo agent, or an existing one already in
+this repo) — task definition through production monitoring. All artifacts
+are plain files under `eval/`, keyed off `eval/state.md`, so any session
+(or any collaborator) can resume the pipeline exactly where it left off
+just by reading that file.
+
+### Install
+
+Nothing extra to install for the toolkit itself — it's `.claude/skills/`,
+`.claude/agents/`, and `.claude/commands/` markdown, driven by whichever
+skill/agent each command dispatches to. Individual steps may need Python
+deps for calibration/scripts (e.g. `scikit-learn` for Cohen's kappa,
+`promptfoo`/`ragas` for the baseline run) — install those as prompted when
+you hit that step. Set a real provider key in `.env` per the no-mock-mode
+policy above before running any step that calls a live model.
+
+### Commands
+
+| Command | Produces | Prerequisite |
+|---|---|---|
+| `/eval-suite-init` | `eval/` folder structure + empty `eval/state.md` | none |
+| `/eval-demo-agent [archetype]` | `demo_agent/` (Mode A, seeded bugs) | `eval/state.md` |
+| `/eval-integrate` | `eval/scan_report.md` (Mode B, read-only scan) | `eval/state.md` |
+| `/eval-define-tasks` | `eval/tasks.md` | `eval/state.md` |
+| `/eval-define-metrics` | `eval/metrics.md` | `eval/tasks.md` |
+| `/eval-build-golden [batch size]` | `eval/golden_set.jsonl` | `eval/metrics.md` |
+| `/eval-select-graders` | `eval/graders.md` | `eval/golden_set.jsonl` |
+| `/eval-write-judge` | `eval/judge_prompts/` | `eval/graders.md` |
+| `/eval-run-baseline` | `eval/results/baseline.json` | `eval/judge_prompts/` |
+| `/eval-analyze` | `eval/failure_report.md` | `eval/results/baseline.json` |
+| `/eval-calibrate [metric]` | `eval/calibration_report.md` | `eval/judge_prompts/` |
+| `/eval-simulate` | `eval/simulation/` (multi-turn tasks only) | `eval/tasks.md` |
+| `/eval-wire-cicd` | `.github/workflows/eval-gate.yml` | `eval/results/baseline.json` |
+| `/eval-optimize-cost` | `eval/cost_report.md` | `eval/calibration_report.md` (approved judge) |
+| `/eval-monitor-setup` | `eval/monitoring_config.md` | `eval/results/baseline.json` |
+| `/eval-suite-run [demo\|integrate] [fast-forward]` | all of the above, end to end | none — inits if needed |
+
+Run the individual commands one at a time for a guided walkthrough, or
+`/eval-suite-run` to delegate the whole pipeline to the `eval-architect`
+subagent, which drives all 12 steps in order, still pausing at every
+skill's built-in user-review point unless you pass `fast-forward`.
+
+Every artifact lives as a plain file under `eval/` — nothing is held only
+in conversation state, so `eval/state.md`'s Pipeline Progress checklist and
+Decisions Log are always the source of truth for what's done and why. Any
+new session picks up the pipeline exactly where the last one stopped just
+by reading it.
