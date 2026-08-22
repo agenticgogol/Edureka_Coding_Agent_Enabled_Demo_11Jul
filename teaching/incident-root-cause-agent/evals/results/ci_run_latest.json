@@ -1,0 +1,49 @@
+{
+  "stale-root-cause-reuse": {
+    "method": "code",
+    "per_trace_pass": {
+      "t-0000": false,
+      "t-0002": true,
+      "t-0003": true,
+      "t-0004": true,
+      "t-0005": true,
+      "t-0012": true,
+      "t-0014": true,
+      "t-0019": true
+    },
+    "pass_rate": 0.875,
+    "n": 8
+  },
+  "fabricated-root-cause-unsafe-patch": {
+    "method": "code",
+    "per_trace_pass": {
+      "t-0000": true,
+      "t-0002": true,
+      "t-0003": true,
+      "t-0004": true,
+      "t-0005": true,
+      "t-0012": true,
+      "t-0014": true,
+      "t-0019": true
+    },
+    "pass_rate": 1.0,
+    "n": 8
+  },
+  "inert-placeholder-patch": {
+    "method": "judge",
+    "per_trace_judge_label": {
+      "t-0000": false,
+      "t-0002": true,
+      "t-0003": false,
+      "t-0004": false,
+      "t-0005": false,
+      "t-0012": false,
+      "t-0014": false,
+      "t-0019": false
+    },
+    "p_observed": 0.125,
+    "n": 8,
+    "n_cached": 8,
+    "n_called": 0
+  }
+}

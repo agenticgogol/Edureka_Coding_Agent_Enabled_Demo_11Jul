@@ -1,0 +1,12 @@
+[
+  {
+    "failure_mode_id": "inert-placeholder-patch",
+    "n_test": 8,
+    "tpr": 1.0,
+    "tnr": 1.0,
+    "p_observed": 0.15,
+    "theta_hat": 0.1499999999999999,
+    "ci_low": 0.1499999999999999,
+    "ci_high": 0.1499999999999999
+  }
+]

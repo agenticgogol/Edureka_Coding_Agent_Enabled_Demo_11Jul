@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|Bash|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /Users/utsabchakraborty/Documents/Edureka_Full_Course/Live_Class_Codes/Coding_Agent_Enabled_Demo/.claude/hooks/lock_test_split.py"
+          }
+        ]
+      }
+    ]
+  }
+}

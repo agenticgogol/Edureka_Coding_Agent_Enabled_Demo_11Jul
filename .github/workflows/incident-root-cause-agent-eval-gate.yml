@@ -1,0 +1,61 @@
+name: incident-root-cause-agent-eval-gate
+
+on:
+  pull_request:
+    paths:
+      - "teaching/incident-root-cause-agent/evals/**"
+      - "teaching/incident-root-cause-agent/backend/agent/**"
+      - "teaching/incident-root-cause-agent/backend/main.py"
+      - "teaching/incident-root-cause-agent/backend/auth.py"
+
+env:
+  # Pin the exact judge model version this gate scores against. A floating
+  # alias ("gpt-4o") is not reproducible and makes "regression" undefined —
+  # this must match the exact snapshot the judge in evals/judges/ was
+  # calibrated against (see evals/results/metrics.json).
+  JUDGE_MODEL_ID: "gpt-4o-2024-08-06"
+  EVAL_REGRESSION_THRESHOLD: "0.05"  # max allowed rise in a failure mode's rate before failing the build
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: teaching/incident-root-cause-agent
+        run: pip install -r backend/requirements.txt -r backend/agent/requirements.txt pytest pyyaml
+
+      - name: Run code-based evaluators' own sanity tests
+        working-directory: teaching/incident-root-cause-agent
+        # -o python_files="*.py": evaluator files are named
+        # <failure_mode_id>.py (e.g. stale-root-cause-reuse.py), which does
+        # not match pytest's default "test_*.py" discovery pattern — without
+        # this override pytest silently collects zero tests here.
+        run: pytest evals/evaluators/ -q -o python_files="*.py"
+        # Sanity-checks that the check_<id> functions still return the
+        # expected True/False on their own taxonomy.yaml member_trace_ids —
+        # catches someone accidentally breaking a check's logic, separate
+        # from the golden-set regression score below.
+
+      - name: Score code evaluators and validated judges over the golden set
+        working-directory: teaching/incident-root-cause-agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python evals/scripts/run_judge_ci.py
+        # Skips any failure_mode_id with no entry in evals/results/metrics.json
+        # and prints a warning per hook H4's rule — an unvalidated judge
+        # never gates a build. Writes evals/results/ci_run_latest.json.
+
+      - name: Compare against calibrated baseline and gate on regression
+        working-directory: teaching/incident-root-cause-agent
+        run: python evals/scripts/check_regression.py --threshold "$EVAL_REGRESSION_THRESHOLD"
+        # Exits non-zero if any failure mode with an existing
+        # evals/results/metrics.json baseline has risen by more than the
+        # threshold. Failure modes with no baseline yet (code evals, or a
+        # judge still mid-calibration) are printed as informational only —
+        # they never fail the gate on their own.

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/db/*.sqlite
+data/jira/tickets.json
+data/jira/tickets.json.lock
+
+# eval suite: cache and per-run output are not source of truth
+evals/.cache/
+evals/results/runs/

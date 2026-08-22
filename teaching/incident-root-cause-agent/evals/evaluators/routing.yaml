@@ -1,0 +1,9 @@
+- failure_mode_id: stale-root-cause-reuse
+  method: code
+  rationale: "Checkable by diffing the drafted patch's code lines (comments stripped) against themselves — a code-issue classification with a diff whose added/removed code lines are identical (only comments changed) is a purely structural no-op-patch signal, no semantic judgment required."
+- failure_mode_id: fabricated-root-cause-unsafe-patch
+  method: code
+  rationale: "Set-membership check (auth-service is documented in this project's own fixtures as having no seeded bug) combined with a diff-shape check (modifies/removes existing lines rather than adding a wholly new function, which distinguishes it structurally from the sibling inert-placeholder-patch mode) — both purely structural, no semantic reading required."
+- failure_mode_id: inert-placeholder-patch
+  method: judge
+  rationale: "Whether newly-added code is genuinely wired to fix the root cause it claims to address (vs. a decorative/inert stub) requires reading whether the added logic actually integrates with the existing implementation the root_cause text references — that's a semantic connectedness judgment, not a structural pattern (no reliable regex/AST rule distinguishes 'a real but simple fix' from 'a plausible-looking no-op')."

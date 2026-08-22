@@ -1,0 +1,5 @@
+entrypoint:
+  type: python_function
+  command: "backend.agent.interface:start_incident"   # primary entry for a new incident; resume_incident/get_incident_status are secondary calls in the same module for the approval leg
+  input_format: "function kwarg: incident_text: str, thread_id: str | None"
+  output_field: "message"   # final_message surfaced as `message` in the public view (see _public_view in interface.py); full public view dict is the real output shape, not just this one field

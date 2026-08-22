@@ -1,0 +1,48 @@
+notes: Derived via grounded-theory axial coding over evals/open_codes.jsonl (open-codin-new,
+  hint mode on, all 20 notes [hint-confirmed]) cross-checked against evals/traces.jsonl
+  raw diffs/root_cause text by the trace-reader subagent. Categories emerged from
+  the data, not user-supplied.
+codes:
+- code_id: stale-root-cause-reuse
+  label: Stale root-cause reuse
+  definition: Agent asserts the checkout-service integer-overflow root cause (a real
+    bug in an earlier session) even though the current cart.py no longer contains
+    that code path (already fixed), producing a cosmetic/no-op patch. Occurs regardless
+    of whether the reported symptom shape even matches an overflow (e.g. total too
+    high, or a hang/timeout with no error).
+  member_trace_ids:
+  - t-0000
+  - t-0001
+  - t-0009
+  - t-0015
+  - t-0016
+  - t-0017
+  count: 6
+  severity: high
+- code_id: fabricated-root-cause-unsafe-patch
+  label: Fabricated root cause with unsafe patch
+  definition: In a repo/file with no actual seeded bug (auth-service, all tests pass),
+    agent still classifies the incident as a code-issue and drafts a patch rather
+    than admitting it found no code-level cause. In the worst cases the drafted patch
+    is actively destructive (e.g. removes a required salt argument from verify_password(),
+    which would raise TypeError on every login if approved).
+  member_trace_ids:
+  - t-0006
+  - t-0007
+  - t-0008
+  - t-0011
+  count: 4
+  severity: critical
+- code_id: inert-placeholder-patch
+  label: Inert placeholder patch
+  definition: Drafted patch adds new stub or duplicate code that is not wired to the
+    actual relevant implementation, so even if merged it would not change real behavior
+    (a send_email stub that only prints, a rate_limit_exceeded() that always returns
+    False, a duplicate rate-limit dict inside login.py that ignores the existing rate_limit.py
+    module).
+  member_trace_ids:
+  - t-0002
+  - t-0013
+  - t-0018
+  count: 3
+  severity: medium

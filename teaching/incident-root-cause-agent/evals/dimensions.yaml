@@ -1,0 +1,9 @@
+dimensions:
+  - name: persona
+    values: [on_call_sre, support_agent_relaying_customer, developer_from_logs]
+  - name: intent
+    values: [clear_code_issue, clear_infra_issue, ambiguous]
+  - name: complexity
+    values: [single_symptom, multi_symptom]
+  - name: repo_targeted
+    values: [checkout-service, auth-service, notifications-service]

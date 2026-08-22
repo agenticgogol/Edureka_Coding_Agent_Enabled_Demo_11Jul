@@ -1,0 +1,52 @@
+name: eval-gate
+
+on:
+  pull_request:
+    paths:
+      - "evals/**"
+      # Add the agent's own source paths here so a code change re-runs the
+      # gate too, not just an evals/ change — eval-ci-new fills this in from
+      # the paths it can detect; confirm/extend before relying on it.
+
+env:
+  # Pin the exact model version under test. A CI run against a floating
+  # alias ("latest") is not reproducible and makes "regression" undefined —
+  # this must be an exact, dated model id.
+  EVAL_MODEL_ID: "<pin an exact model id, e.g. claude-sonnet-5-YYYYMMDD>"
+  EVAL_REGRESSION_THRESHOLD: "0.05"  # max allowed drop in corrected pass rate before failing the build
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pyyaml
+
+      - name: Run code-based evaluators
+        run: pytest evals/evaluators/ -q
+
+      - name: Run validated judges only
+        run: |
+          python evals/scripts/run_judge_ci.py \
+            --golden evals/golden/golden_set.jsonl \
+            --metrics evals/results/metrics.json \
+            --model "$EVAL_MODEL_ID"
+        # run_judge_ci.py (written alongside this workflow) skips any
+        # failure_mode_id with no entry in metrics.json and prints a warning
+        # per hook H4's rule — an unvalidated judge never gates a build.
+
+      - name: Compare against baseline and gate on regression
+        run: |
+          python evals/scripts/check_regression.py \
+            --current evals/results/ci_run_latest.json \
+            --baseline evals/results/metrics.json \
+            --threshold "$EVAL_REGRESSION_THRESHOLD"
+        # check_regression.py exits non-zero if any metric's corrected pass
+        # rate drops by more than the threshold vs. the stored baseline in
+        # metrics.json, failing this job.

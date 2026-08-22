@@ -1,0 +1,31 @@
+{
+  "failure_mode_id": "inert-placeholder-patch",
+  "random_state": 42,
+  "strat_key": "query_id in {t-0002,t-0013,t-0018} (inert-placeholder-patch membership) -- deviated from full dimension_tuple because all 20 tuples are unique in this dataset, which would put 100% of traces into test",
+  "train": [
+    "t-0008",
+    "t-0011",
+    "t-0006",
+    "t-0013"
+  ],
+  "dev": [
+    "t-0007",
+    "t-0017",
+    "t-0016",
+    "t-0015",
+    "t-0010",
+    "t-0009",
+    "t-0001",
+    "t-0018"
+  ],
+  "test": [
+    "t-0003",
+    "t-0014",
+    "t-0019",
+    "t-0005",
+    "t-0012",
+    "t-0000",
+    "t-0004",
+    "t-0002"
+  ]
+}
