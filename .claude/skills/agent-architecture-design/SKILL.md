@@ -1,6 +1,6 @@
 ---
 name: agent-architecture-design
-description: Use when the user wants to build an agent, or is unsure whether they need one, and the underlying system-design pattern hasn't been chosen and justified yet. Interviews the user against Tier 9's decision framework and writes a finalized architecture design document — which of the six patterns (deterministic code, fixed workflow, RAG assistant, bounded ReAct agent, planner-executor, supervisor/multi-agent), why, rejected alternatives, and required overlays (security, guardrails, cost/latency, evaluation).
+description: Use when the user wants to build an agent, or is unsure whether they need one, and the underlying system-design pattern hasn't been chosen and justified yet. Interviews the user against Tier 9's decision framework and writes a finalized architecture design document — which pattern (deterministic code, fixed workflow, RAG assistant, Agentic RAG, bounded ReAct agent, planner-executor, supervisor/multi-agent), why, rejected alternatives, and required overlays (security, guardrails, cost/latency, evaluation).
 ---
 
 # Agent Architecture Design
@@ -99,6 +99,17 @@ message, grouped by module (matching the reference doc's structure):
    data via a database/API / changing documents or policies that need
    citation / stable tone or behavior, not facts / no external knowledge
    needed)*
+3a. *(only if Q3 = "changing documents or policies that need citation")*
+    Is a single fixed retrieve-then-answer call enough, or does answering
+    well require the retrieval step itself to be dynamic — reformulating a
+    query and retrying, grading what came back before trusting it, routing
+    between more than one knowledge source, decomposing a multi-part
+    question into sub-questions before retrieving, or declining to answer
+    when evidence is thin? *(fixed-single-call / dynamic-retrieval — give a
+    concrete example from the business problem rather than asking
+    abstractly, e.g. "if someone asks something that needs two different
+    policy documents combined, does one retrieval pass reliably find both,
+    or would it need to search, check what it found, and search again?")*
 
 **Module 2 — Autonomy shape** *(skip if Q1 was "known")*
 4. If dynamic: is the tool/step space small enough to bound with an
@@ -136,8 +147,20 @@ already forced a decision):
 2. Q6 = long-running/batch/event-driven → **durable async/event workflow**
    as the runtime shape, with the control-flow pattern chosen independently
    via Q1/Q4/Q5.
-3. Q3 = changing documents, Q1 = known → **RAG assistant with a fixed
-   workflow**, no agent loop.
+3. Q3 = changing documents, Q1 = known, Q3a = fixed-single-call → **RAG
+   assistant with a fixed workflow**, no agent loop.
+3b. Q3 = changing documents, Q3a = dynamic-retrieval → **Agentic RAG**
+    (`agent-agentic-rag`) — a LangGraph loop where the agent decides
+    whether/how many times to retrieve, self-grades what it retrieved, and
+    optionally routes/plans/reranks/verifies groundedness/abstains. Name
+    only the optional capabilities Q3a's example actually needs — don't
+    default to all of them; record the confirmed subset in this doc's
+    Chosen architecture pattern section for `agent-agentic-rag` to read
+    later. If the "changing documents" are actually a relationship-heavy
+    knowledge graph rather than a flat document/policy store, this is
+    `agent-graphrag` instead (or combined with Agentic RAG's control flow,
+    if agentic reasoning over a graph retriever is genuinely needed) — ask
+    rather than assuming vector vs. graph from Q3 alone.
 4. Q5 = yes → **supervisor–specialists (multi-agent)**.
 5. Q1 = dynamic, Q4 = bounded → **bounded ReAct agent**.
 6. Q1 = dynamic, Q4 = decomposition → **planner–executor**.
@@ -150,6 +173,27 @@ alternatives that were considered and why they were rejected — this is
 load-bearing, not a formality: a design that doesn't name what it rejected
 looks identical whether the simpler option was actually considered or
 never occurred to anyone.
+
+### 3b. Actually source every tool — MCP first, always
+
+Before writing the Tool & side-effect boundaries section below, enumerate
+every distinct tool/action the system needs (same discipline as stage 4's
+"walk me through every distinct action" prompt: press for actual
+operations, not a vague "database access"). For **each** one — including
+ones that look purely custom/in-house — invoke
+`agent-decision-external-tool-sourcing`. Its first move is always a live
+MCP-server lookup, preferred by default whenever a covering server exists
+(no integration code to write or maintain); only fall back to a raw API,
+paid service, or hand-written custom tool if no MCP server covers it, or
+the user gives a specific reason not to use the one found. This step must
+actually run, not just be filled in from memory when the template's Tool &
+side-effect boundaries section is written — a design that names tools
+without having done this lookup is exactly the "custom code where a free
+MCP server would have done" outcome this process exists to prevent. For
+every tool the sourcing skill leaves in place, also run the read/write,
+reversibility, and authorization-tier judgment from stage 4's rubric
+(`agent-decision-tools-and-authorization` steps 3-4) — an MCP-sourced tool
+still needs its own auth tier, same as a custom one.
 
 ### 4. Write `architecture_design.md`
 
@@ -169,10 +213,15 @@ directory. Structure:
 audit trail for why the pattern below was chosen, not just a summary>
 
 ## Chosen architecture pattern
-<one of: deterministic code / fixed workflow / RAG assistant / bounded
-ReAct agent / planner-executor / supervisor-specialists / human-governed
-decision system (as a wrapper around one of the above) — plus the ASCII
-topology diagram for this specific system, not a generic one>
+<one of: deterministic code / fixed workflow / RAG assistant / Agentic RAG
+/ bounded ReAct agent / planner-executor / supervisor-specialists /
+human-governed decision system (as a wrapper around one of the above) —
+plus the ASCII topology diagram for this specific system, not a generic
+one. If Agentic RAG: also list which of `agent-agentic-rag`'s capabilities
+are in scope — the always-on core (agentic retrieval decisions,
+self-grading) plus whichever optional ones (multi-tool routing / multi-hop
+planning / reranking / groundedness verification / abstention) Q3a's
+example actually needs>
 
 ## Rejected alternatives
 <the 1-2 next-simplest patterns considered, and the specific answer above
@@ -185,8 +234,10 @@ categories apply — conversation context, preferences, task state,
 business records, long-term knowledge, audit history>
 
 ## Tool & side-effect boundaries
-<per Module 4: for every tool this system needs, read vs. write, what
-authorizes it, idempotency/audit/approval requirements for writes>
+<per Module 4 and step 3b's sourcing pass: for every tool this system
+needs — sourcing (MCP-server name / Custom / Free / Paid-approved /
+Alternative-approach / Declined), read vs. write, what authorizes it,
+idempotency/audit/approval requirements for writes>
 
 ## Runtime & deployment shape
 <per Module 5: synchronous / async / batch / event-driven / durable,

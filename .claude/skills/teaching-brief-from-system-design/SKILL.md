@@ -67,6 +67,8 @@ Pull out, specifically:
 | Evaluation & rollout gates' "ready to ship" scenario | `Happy-path test case` | Rephrase as one end-user scenario (what they'd type/click, what they'd see) — still needs human approval, this is only a draft |
 | Non-functional budgets & overlays | `Observability` | `phoenix` if tracing/observability is called out as required; else `none` |
 | Knowledge & state design + Tool inventory | `Vector store` | Name the specific store if a RAG/retrieval tool exists in the design; else `none` — never default to a vector store the architecture doc didn't actually call for |
+| Chosen pattern (from stage 2's design-pattern decision, if Agentic RAG) | `RAG mode` + `Agentic RAG capabilities` | If stage 2 chose Agentic RAG: `RAG mode: agentic`, and carry forward the exact capability list (core + confirmed optional ones) stage 2 recorded — don't re-derive or re-ask which optional capabilities are in scope. If stage 2 chose the fixed-workflow RAG assistant pattern: `RAG mode: fixed`. If no vector store: `RAG mode: n/a` |
+| Tool inventory — stage 4's `system_design/04_tools_and_authorization.md` (staged) or the one-shot doc's `Tool & side-effect boundaries` section (`agent-architecture-design` step 3b) | `MCP tools` | Carry forward every tool whose sourcing decision was `MCP-server (name, ...)`, with its server name and transport — don't re-run the MCP lookup, the design stage already did it. If no tool was sourced from an MCP server, `MCP tools: none` |
 | Tool & side-effect boundaries + Provider/model answer | `Constraints` | List required env vars: LLM provider key, plus any tool's credential requirements flagged as paid/external in the tools table |
 | Calling command's Problem & User answer | `Audience level` | Infer from who the design doc says is affected (e.g. "non-technical stakeholders" -> beginner-facing; "on-call engineers" -> intermediate/advanced) |
 | Any "your call" defaults recorded during the earlier requirements checklist | `Decisions` | Carry forward verbatim — don't re-ask |
@@ -75,8 +77,9 @@ Pull out, specifically:
 
 Use `teaching-brief`'s exact schema (see that skill's "Brief file"
 section). Fill in `Description`, `Format`, `Happy-path test case`,
-`Observability`, `Vector store`, `Constraints`, `Audience level`, and
-`Decisions` per the mapping above. Add one extra line under `Description`
+`Observability`, `Vector store`, `RAG mode`, `Agentic RAG capabilities`,
+`MCP tools`, `Constraints`, `Audience level`, and `Decisions` per the
+mapping above. Add one extra line under `Description`
 pointing back to the architecture doc:
 
 ```markdown

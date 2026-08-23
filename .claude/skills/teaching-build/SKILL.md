@@ -52,14 +52,32 @@ code plus one clear addition, not a fresh unrelated example.
    is non-trivial enough to warrant it — for a 5-step demo like "API call
    → system prompt → tool call → memory → basic RAG," it's worth it since
    step (a)'s client setup is reused by every later step).
+   If `teaching_brief.md`'s `## MCP tools` names a server (not `none`), the
+   tool-calling step should build that call via `agent-mcp-real` Mode B
+   (connect as a client to the named public server) rather than a
+   hand-written function — show the client actually spawning/connecting to
+   the real server process and getting a real tool result, since that's
+   the whole point of the demo step.
 4. No mock mode — every step calls a real provider. `require-api-key` must
    have already verified a working key before `teaching-build` runs (this
    is checked once per demo, not per step); build cells assuming that key
    is live, and let a genuine failure surface as a real error for
    `teaching-debug` to handle, not a silent mock fallback.
 5. For the RAG-type step specifically (or any step needing sample data):
-   use small local synthetic/sample files under `teaching/<slug>/data/` —
-   don't require the user to supply a real PDF before the demo runs once.
+   this should normally already be handled — `run-teaching-pipeline` and
+   `agent_system_design_to_build_onego` both run `synthetic-data-generator`
+   before calling `teaching-build`. If this skill is invoked standalone and
+   `teaching/<slug>/data/` doesn't yet have what a step needs, run
+   `synthetic-data-generator` now rather than improvising sample files
+   inline — don't require the user to supply a real PDF before the demo
+   runs once. If `teaching_brief.md`'s `RAG mode` is `agentic`, build that step per
+   `agent-agentic-rag` (its core decide/retrieve/grade/rewrite loop, plus
+   only the optional capabilities the brief's `Agentic RAG capabilities`
+   line names) instead of a single fixed retrieve-then-generate call — show
+   the loop actually running (e.g. print each retrieval round and its
+   grade) so the student sees the agentic behavior, not just a final
+   answer. If `RAG mode` is `fixed` or `n/a`, a plain `vector-store` call is
+   correct and `agent-agentic-rag` should not be invoked.
 6. When done, all steps live in one artifact a student can run top to
    bottom and see the concept build up live.
 
@@ -126,7 +144,17 @@ to pick how it should be built. Never silently choose either mode.
 2. If `teaching_brief.md`'s `## Vector store` is not `none`: run
    `vector-store` to scaffold ingestion/query for the named store
    (ChromaDB / FAISS / Qdrant Cloud) before wiring the backend endpoints
-   that use it.
+   that use it. If `## RAG mode` is `agentic`, also run `agent-agentic-rag`
+   to build the LangGraph retrieval loop on top of that store — wiring only
+   the capabilities `## Agentic RAG capabilities` names — and have the
+   backend endpoint call into that graph instead of a single fixed
+   retrieve-then-generate call.
+2a. If `teaching_brief.md`'s `## MCP tools` names a server (not `none`/
+   `declined`): run `agent-mcp-real` Mode B to build the client connecting
+   to that named public server, and confirm any credentials the underlying
+   service needs (per that server's own docs) are in `.env` and covered by
+   `require-api-key`-style verification before the backend endpoint that
+   calls it is considered done.
 3. `backend-fastapi` — one endpoint per step in the brief's step list
    (e.g. step (a)'s endpoint, step (b) extends it, etc.), matching however
    many of the brief's steps are in scope for this build. Keep the same

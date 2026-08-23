@@ -1,5 +1,5 @@
 ---
-description: Run the full brief-to-verified-app pipeline for a project or concept, stage by stage, per WORKFLOW.md. Hard-stops if no working API key is configured, at the clarify and test-case-confirmation checkpoints, and on any failing gate.
+description: Run the full brief-to-verified-app pipeline for a project or concept, stage by stage, per WORKFLOW.md. For projects/, includes a mandatory architecture-design stage (single/multi-agent, RAG/Agentic RAG, MCP tools) before design.md is written. Hard-stops if no working API key is configured, at the clarify and test-case-confirmation checkpoints, and on any failing gate.
 argument-hint: <projects|concepts> <slug>
 ---
 
@@ -9,6 +9,19 @@ Parse `$ARGUMENTS` as `<kind> <slug>` (kind is `projects` or `concepts`).
 This command drives the entire `WORKFLOW.md` sequence for one unit. Follow
 it exactly, in order, and do not skip or reorder steps. Use `TaskCreate`/
 `TaskUpdate` to track each stage so progress is visible.
+
+**For `projects/`, architecture design (Stage 1b below) is mandatory, not
+optional** — every project built through this command gets a real
+single-vs-multi agent decision, a real design-pattern decision (including
+whether the usecase is plain RAG, Agentic RAG, or no retrieval at all),
+and a real tool-sourcing pass (MCP-server-first) before `design.md` is
+written. This is the same architecture-design stage
+`/agent_system_design_to_build_onego` runs for teaching demos, applied
+here to `projects/`. **`concepts/` skips Stage 1b** — concepts are
+notebook-scale, atomic, single-thing demos by definition (see `CLAUDE.md`),
+and don't warrant a full topology/memory/loop-engineering design pass; a
+concept still gets `technical-design`'s own lightweight Agentic-RAG/MCP
+detection (its steps 0a/0a2) instead.
 
 ## Preconditions
 
@@ -26,13 +39,46 @@ it exactly, in order, and do not skip or reorder steps. Use `TaskCreate`/
     is no mock mode in this repo — nothing past this point runs without a
     working key. Do not draft `design.md` or write any code until this
     passes.
-2. **Design** — `technical-design` (or spawn `planner`). For `projects/`,
-   this starts by **explicitly asking the user** whether they want a
-   Jupyter notebook prototype or a full frontend + FastAPI backend
-   production-style app — do not assume either. Produce `design.md`.
-   Briefly show it to the user; proceed unless they object (this is not a
-   hard stop, just a courtesy pause — say what you're about to do and give
-   a moment to redirect).
+1b. **Architecture design — mandatory for `projects/`, skipped for
+    `concepts/`.** Check whether `$1/$2/architecture_design.md` or
+    `$1/$2/system_design/architecture_design.md` already exists and is
+    approved. If so, reuse it — go straight to stage 2. If not (and
+    `kind` is `projects`):
+    a. Ask the user to choose the design process, same as
+       `/agent_system_design_to_build_onego` Step 3: **staged**
+       (`agent-system-design`, the full 8-stage gated pipeline —
+       recommended when tools/memory/loop design are non-trivial or the
+       user wants to see the reasoning at each decision point) or
+       **one-shot** (`agent-architecture-design`, a single interview
+       producing one `architecture_design.md` directly — recommended for
+       a small, clearly-bounded usecase). Feed `project_brief.md` and
+       stage 1's clarified answers in as pre-answered context so neither
+       process re-asks them.
+    b. Run the chosen process to completion, with real explicit approval
+       at every stage/step — this is where single-vs-multi-agent, the
+       design pattern (deterministic code / fixed workflow / RAG
+       assistant / Agentic RAG / bounded ReAct / planner-executor /
+       supervisor / human-governed), and tool sourcing (MCP-server-first,
+       preferred by default whenever one exists) actually get decided.
+       Never skip or infer a stage's answer.
+    Point the output at `$1/$2/` (`system_design/` for staged, or
+    `architecture_design.md` directly for one-shot) — same layout
+    `/agent_system_design_to_build_onego` uses for `teaching/<slug>/`.
+2. **Design** — `technical-design` (or spawn `planner`). If stage 1b
+   produced (or found) an approved architecture design, `technical-design`
+   maps its decisions directly into `design.md` — chosen pattern into
+   Agent/graph (including which `agent-agentic-rag` capabilities are in
+   scope, if Agentic RAG), the tool inventory's sourcing decisions
+   (MCP-server name or otherwise) into Components/Tech choices — instead
+   of re-deriving them, and its own steps 0a/0a2 (Agentic RAG / MCP
+   detection) are skipped since stage 1b already answered those. (For
+   `concepts/`, where stage 1b doesn't run, steps 0a/0a2 still apply
+   directly.) For `projects/`, it then **explicitly asks the user**
+   whether they want a Jupyter notebook prototype or a full frontend +
+   FastAPI backend production-style app — do not assume either. Produce
+   `design.md`. Briefly show it to the user; proceed unless they object
+   (this is not a hard stop, just a courtesy pause — say what you're about
+   to do and give a moment to redirect).
 3. **Draft and confirm tests** — `write-and-validate-tests`. Draft the
    plain-language test list. **STOP AND WAIT** for explicit user
    confirmation that the list matches their intent. This is a hard
@@ -44,11 +90,18 @@ it exactly, in order, and do not skip or reorder steps. Use `TaskCreate`/
 5. **Build**, in order, each committing its own tests as it goes:
    a. `setup-venv`, `pick-requirements`
    b. `helper-utils` (copy from `_shared/`)
+   b1. `synthetic-data-generator` — if `design.md` describes a concrete
+      input data shape (CSV/PDF/transcript/etc.) with no real sample data
+      supplied, generate it into `data/` now, before the steps below that
+      consume it. Skip only if real sample data already exists or the
+      input is pure runtime free-text with nothing to seed.
    c. `backend-fastapi` (if applicable)
    d. the agent skill matching what `design.md` names
       (`agent-langgraph`/`agent-crewai`/`agent-dspy`/`agent-mcp-real`/
-      `agent-graphrag`) — apply `research-first` + spike-first for
-      everything except `agent-langgraph`
+      `agent-graphrag`/`agent-agentic-rag`) — apply `research-first` +
+      spike-first for everything except `agent-langgraph`/`agent-agentic-rag`
+      (the latter is a LangGraph topology, not a separate framework, so it
+      shares LangGraph's well-covered-in-training-data exemption)
    e. `frontend-nextjs` / `frontend-streamlit` / `notebook-concept`
 6. **Full test gate** — `run-tests`. Real captured pass/fail output. If
    failures exist, invoke `project-debug` to reproduce/diagnose/fix and

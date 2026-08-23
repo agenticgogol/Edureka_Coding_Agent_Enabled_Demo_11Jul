@@ -20,6 +20,17 @@ other usecase, and (3) it does not stop after the brief — it continues
 through `teaching-build` and `teaching-verify` automatically once the
 brief is fully approved.
 
+It also now overlaps with `/run-teaching-pipeline`, since that command's
+own Stage 1.5 mandatorily runs this same architecture-design step. The
+difference is upfront cost: this command front-loads Step 2's fixed
+9-item clarifying checklist before design even starts, so the whole run
+(design → brief → build → verify) proceeds with fewer stops later;
+`/run-teaching-pipeline` instead gathers the equivalent information
+through `teaching-brief`'s own checkpoints as it goes. Pick this command
+when the usecase is already well-described up front and you want the
+fastest path to a built demo; pick `/run-teaching-pipeline` when you'd
+rather work through the decisions conversationally.
+
 ## Step 0 — Slug and scope check
 
 Derive a short `<slug>` from `$ARGUMENTS` (kebab-case). If
@@ -57,9 +68,11 @@ two rows are genuinely open-ended.
    before taking effect (HITL) or can it act autonomously?
 4. **Tools** — what does it need to call (DB, vector search, file
    parsing, external API, deterministic function)? Read-only or
-   read/write? Free/local or paid (flag paid explicitly — Step 4's design
-   stage resolves sourcing via `agent-decision-external-tool-sourcing` if
-   the staged path is chosen)?
+   read/write? Free/local, a free public MCP server, or paid (flag paid
+   explicitly — the design stage resolves sourcing via
+   `agent-decision-external-tool-sourcing` regardless of staged vs.
+   one-shot path; it checks for a covering MCP server first, for every
+   tool, and prefers it by default)?
 5. **Frontend** — Streamlit (this repo's default for demos) / Next.js
    (production-style) / notebook only (fastest path, no separate backend)
    / none (API only)? This directly decides `teaching_brief.md`'s
@@ -142,7 +155,12 @@ approved, continue immediately into the rest of `/run-teaching-pipeline`'s
 sequence for this slug — this is the step that makes this command
 "onego" rather than "design-then-separately-run-the-pipeline":
 
-1. **Build** — `teaching-build`, per `teaching_brief.md`'s `Format`.
+1. **Build** — first `synthetic-data-generator`, if `teaching_brief.md`
+   describes a concrete input data shape (CSV/PDF/transcript/etc.) with no
+   real sample data supplied — generate it into `teaching/<slug>/data/`
+   before `teaching-build` runs. Skip only if real sample data already
+   exists or the input is pure runtime free-text with nothing to seed.
+   Then `teaching-build`, per `teaching_brief.md`'s `Format`.
 2. **Verify** — `teaching-verify`. On any failure, it automatically
    invokes `teaching-debug`/`project-debug` to iterate to a real fix, per
    its own procedure — don't stop at the first failure and report it.

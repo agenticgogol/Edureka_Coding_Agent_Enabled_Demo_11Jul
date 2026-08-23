@@ -40,18 +40,45 @@ Ask, batched with recommendations:
 2. **Given stage 1's sub-branch signal, confirm: bounded tool loop, or
    explicit up-front plan decomposition?** *(only ask if stage 1 left this
    ambiguous — usually it's already answered.)*
+3. **Only if Q1 = "changing documents or policies that need citation":**
+   is a single fixed retrieve-then-generate call actually enough, or does
+   answering well require the retrieval step itself to be dynamic — e.g.
+   the agent may need to reformulate a query and retrieve again, grade
+   what it got before trusting it, route between more than one knowledge
+   source, decompose a multi-part question into sub-questions before
+   retrieving, or decline to answer when evidence is thin? *(fixed-single-
+   call / dynamic-retrieval)* Give a concrete example from the usecase
+   rather than asking abstractly — e.g. "if someone asks something that
+   needs two different policy documents combined, does one retrieval pass
+   reliably find both, or would it need to search, check what it found,
+   and search again?"
 
 Apply:
 - Q1 = "no external knowledge" + no dynamic branching needed →
   **deterministic code** (no LLM agent loop at all — say so plainly, this
   is the cheapest correct answer and newcomers often skip past it).
-- Q1 = "changing documents," steps known → **RAG assistant, fixed
-  workflow** (retrieval + generation, no agent loop).
+- Q1 = "changing documents," Q3 = fixed-single-call → **RAG assistant,
+  fixed workflow** (retrieval + generation, no agent loop).
+- Q1 = "changing documents," Q3 = dynamic-retrieval → **Agentic RAG**
+  (`agent-agentic-rag`) — a LangGraph loop where the agent decides
+  whether/how many times to retrieve, self-grades what it retrieved, and
+  optionally routes/plans/reranks/verifies groundedness/abstains, per that
+  skill's capability list. Do not default to every optional capability —
+  name only the ones this usecase's Q3 example actually needs; record them
+  explicitly in this stage's output for `agent-agentic-rag` to read later.
 - Steps known, some LLM interpretation but no dynamic tool use →
   **fixed workflow** (deterministic graph, LLM used for a bounded
   step, not a loop).
 - Steps dynamic, bounded tool space → **bounded ReAct agent**.
 - Steps dynamic, needs up-front decomposition → **planner-executor**.
+
+Note: knowledge-graph-based retrieval (entities/relationships, graph
+traversal) is a separate axis from this Q3 branch — if the usecase's
+"changing documents" are actually a relationship-heavy knowledge graph
+rather than a flat document/policy store, flag `agent-graphrag` instead of
+(or combined with, if agentic control flow over a graph retriever is
+needed) Agentic RAG. Ask explicitly rather than assuming vector vs. graph
+from "changing documents" alone.
 
 **If multi-agent:**
 
@@ -111,7 +138,11 @@ chosen pattern's nodes, not its own approval gate.
 
 ## Chosen pattern
 <one of the named patterns, plus an ASCII topology diagram specific to
-this usecase, not a generic template>
+this usecase, not a generic template. If Agentic RAG: also list which of
+`agent-agentic-rag`'s capabilities (1-7) are in scope, per the Q3 example
+above — the always-on core (agentic retrieval decisions, self-grading) plus
+whichever optional ones (routing / multi-hop planning / reranking /
+groundedness verification / abstention) this usecase actually needs>
 
 ## Rejected alternatives
 <1-2 next-simplest patterns, and the specific answer that ruled each out>

@@ -31,11 +31,16 @@ template is derived from.
 2. [ ] setup-venv / package manager init
 3. [ ] pick-requirements — lock requirements.txt / package.json
 4. [ ] helper-utils — copy config.py/llm_client.py from _shared/
+4a. [ ] synthetic-data-generator — if design.md describes a concrete input
+       data shape (CSV/PDF/transcript/etc.) with no real sample data
+       supplied, generate it into data/ before build steps that consume
+       it run (note explicitly in plan.md if skipped and why)
 5. [ ] backend-fastapi — implement API contract from design.md
 6. [ ] agent-<framework> — implement agent/graph logic (pick the skill
        matching design.md's named framework: agent-langgraph / agent-crewai
-       / agent-dspy / agent-mcp-real / agent-graphrag). Apply research-first
-       and spike-first for anything other than agent-langgraph.
+       / agent-dspy / agent-mcp-real / agent-graphrag / agent-agentic-rag).
+       Apply research-first and spike-first for anything other than
+       agent-langgraph/agent-agentic-rag.
 7. [ ] frontend-nextjs (or frontend-streamlit / notebook-concept) — implement UI
 8. [ ] implement tests from step 1 alongside each slice above; each builder
        runs their own new tests before moving on

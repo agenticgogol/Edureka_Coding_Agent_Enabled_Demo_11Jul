@@ -1,6 +1,6 @@
 ---
 name: teaching-brief
-description: Use to start a lightweight teaching demo — a progressive sequence of small steps (e.g. "a) basic API call, b) add system prompt, c) add tool calling, d) add memory, e) basic RAG"), as notebook or small project. Drafts teaching/<slug>/teaching_brief.md through a sequence of gated checkpoints, ending only once the user has approved format, happy-path test case, env keys, observability, and vector store.
+description: Use to start a lightweight teaching demo — a progressive sequence of small steps (e.g. "a) basic API call, b) add system prompt, c) add tool calling, d) add memory, e) basic RAG"), as notebook or small project. Drafts teaching/<slug>/teaching_brief.md through a sequence of gated checkpoints, ending only once the user has approved format, happy-path test case, env keys, observability, vector store, and any MCP tools (checking for free public MCP servers before assuming custom tool code).
 ---
 
 # Teaching Brief
@@ -99,9 +99,44 @@ chosen after step 5 already verified the LLM key, run a separate
 credential verification before building. Record the answer as
 `Vector store:` in the brief.
 
-### 8. Ready to generate?
+If a vector store was chosen (not `none`), ask one follow-up before moving
+on: **"Should retrieval be a single fixed retrieve-then-answer step, or
+does the agent need to decide whether/how many times to retrieve, grade
+what it gets back, and retry on a bad result?"** Give a concrete example
+from the description if one exists. Record the answer as `RAG mode:` in
+the brief (`fixed` or `agentic`). If `agentic`, also ask which optional
+capabilities are in scope beyond the always-on core (retrieval decisions +
+self-grading): multi-tool routing, multi-hop planning, reranking,
+groundedness verification, abstention — batch these as one closed-ended
+list, don't wire any silently, and record the confirmed subset as
+`Agentic RAG capabilities:` in the brief. This is what `teaching-build`
+uses to decide between `vector-store` alone vs. `agent-agentic-rag`.
 
-Summarize everything decided so far (steps 1-7) in one short block and
+### 8. External tools — prefer a free public MCP server over custom tool code
+
+From the description, list any tool/capability the demo needs beyond the
+LLM provider and vector store — including things that would normally be
+hand-coded (filesystem access, git commands), not just obvious
+third-party calls (web search, GitHub, Slack, sending email, etc.). If
+none, record `MCP tools: none` and move on — don't invent a tool need.
+For each one found, do a live lookup (same idea as
+`agent-decision-external-tool-sourcing`'s step 1, lightweight for this
+track): search for a free public MCP server that already exposes it. If
+one is found, **recommend it by default** rather than presenting a neutral
+choice — tell the user plainly: **"There's a free public MCP server for
+[capability]: [server name], via [stdio package / hosted endpoint]. I'd
+use this by default rather than writing custom tool code — any reason
+you'd rather skip it or keep the demo simpler?"** — and record the choice.
+This is a demo, not a production build, so declining and simplifying scope
+is still a completely fine answer; the preference for MCP doesn't mean
+pushing the user into wiring a tool the demo doesn't actually need — it
+means defaulting to the free existing server over hand-written code
+*when* a tool is wanted at all. Record the answer as `MCP tools:` in the
+brief (server name(s) used, or `none`/`declined`).
+
+### 9. Ready to generate?
+
+Summarize everything decided so far (steps 1-8) in one short block and
 ask: "Ready for me to generate the code?" Do not start `teaching-build`
 before an explicit yes.
 
@@ -134,6 +169,18 @@ phoenix | none
 ## Vector store
 chromadb | faiss | qdrant | none
 
+## RAG mode
+fixed | agentic | n/a (no vector store)
+
+## Agentic RAG capabilities (only if RAG mode = agentic)
+core: agentic retrieval decisions, self-grading/self-correction (always on)
+optional: <subset of multi-tool routing / multi-hop planning / reranking /
+groundedness verification / abstention actually confirmed, or "none">
+
+## MCP tools
+<server name(s) chosen, with transport (stdio package / hosted endpoint),
+or "none" / "declined (found [server], user chose to skip)">
+
 ## Constraints
 <library/provider requirements — which provider key(s) required, plus
 vector-store credentials if applicable>
@@ -152,12 +199,14 @@ vector-store credentials if applicable>
 - API key verification: verified | pending | failed
 - Observability: approved | pending
 - Vector store: approved | pending
+- RAG mode: approved | pending | n/a
+- MCP tools: approved | pending
 - Ready to generate: approved | pending
 - Build: complete | pending
 - Verify: complete | pending | failed
 ```
 
 Every checkpoint above (format, happy-path test case, .env confirmation,
-observability, vector store, ready-to-generate) must show real user
-approval in the conversation before `run-teaching-pipeline` moves to
+observability, vector store, MCP tools, ready-to-generate) must show real
+user approval in the conversation before `run-teaching-pipeline` moves to
 `teaching-build` — do not infer approval from silence.

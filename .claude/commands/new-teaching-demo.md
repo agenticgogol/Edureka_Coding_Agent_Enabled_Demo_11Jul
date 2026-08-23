@@ -15,5 +15,10 @@ ask questions or draft anything.
    $ARGUMENTS` (if it's already built and they want to extend it).
 2. Otherwise, create the empty `teaching/$ARGUMENTS/` folder.
 3. Tell the user to run `/run-teaching-pipeline $ARGUMENTS` next — that
-   command is where the actual project description, clarifying questions,
-   format choice, and every other checkpoint happen.
+   command is where the actual project description, mandatory
+   architecture-design stage (single-vs-multi-agent, RAG vs. Agentic RAG,
+   MCP-server-first tool sourcing), clarifying questions, format choice,
+   and every other checkpoint happen. For a usecase already fully described
+   up front, `/agent_system_design_to_build_onego "<description>"` runs the
+   same design stage plus a fixed clarifying checklist and the full build
+   in one command instead of two.

@@ -58,9 +58,11 @@ Only the first two rows (problem/done) are genuinely open-ended.
 4. **Tools** — what does the agent need to call to do its job (DB
    read/write, vector search, file parsing, a specific external API, a
    calculator/deterministic function)? For each: read-only or read/write?
-   Free/local option or does it require a paid API? (If unsure, flag it —
-   Step 4 below resolves this via `agent-decision-external-tool-sourcing`
-   if the staged design path is chosen.)
+   Free/local option, a free public MCP server, or does it require a paid
+   API? (If unsure, flag it — Step 4 below resolves this via
+   `agent-decision-external-tool-sourcing` regardless of whether the
+   staged or one-shot design path is chosen; that skill now checks for a
+   covering MCP server first, for every tool, and prefers it by default.)
 5. **Frontend** — Streamlit (simple, this repo's default for demos) /
    Next.js (production-style) / notebook only (no UI, this repo's fastest
    path for a single-agent teaching-style build) / none (API only)?
@@ -169,9 +171,9 @@ pointer to the full design doc from Step 3>
 <exact shape from Step 2.3, including HITL requirement if any>
 
 ## Tools
-<table: tool name | purpose | read-only or read/write | free/local or paid
-(and if paid, approved alternative per Step 2.4) | maps to which design-doc
-tool entry>
+<table: tool name | purpose | read-only or read/write | sourcing (MCP
+server name / free-local / paid, and if paid, approved alternative per
+Step 2.4) | maps to which design-doc tool entry>
 
 ## Frontend
 <choice from Step 2.5, and what it must render/collect>

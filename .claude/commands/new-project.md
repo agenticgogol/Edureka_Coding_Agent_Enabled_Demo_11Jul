@@ -14,4 +14,8 @@ The user wants to start a new project with slug `$ARGUMENTS` under
 3. Show the drafted brief and stop — do not proceed to clarification,
    design, or code in this command. Tell the user to run
    `/clarify-project $ARGUMENTS` next (or `/run-pipeline projects $ARGUMENTS`
-   to run the whole thing end to end with checkpoints).
+   to run the whole thing end to end with checkpoints — for `projects/`
+   this now includes a mandatory architecture-design stage deciding
+   single-vs-multi-agent, the design pattern (including RAG vs. Agentic
+   RAG), and tool sourcing (MCP-server-first) before `design.md` is ever
+   written).

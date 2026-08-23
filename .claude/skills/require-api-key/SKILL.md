@@ -1,6 +1,6 @@
 ---
 name: require-api-key
-description: Use as the FIRST gate in every pipeline (projects, concepts, teaching) after the brief is confirmed, before any design or code is written. Confirms a real, working LLM API key is present — no mock mode exists in this repo; nothing builds without a verified key.
+description: Use as the FIRST gate in every pipeline (projects, concepts, teaching) after the brief is confirmed, before any design or code is written. Confirms a real, working LLM API key is present, and applies the same real-verification hard stop to any other required credential the design carries (vector store, MCP server's underlying service) — no mock mode exists in this repo; nothing builds without every required credential verified.
 ---
 
 # Require API Key
@@ -41,3 +41,11 @@ before any other work starts.
 5. Only once a real call has succeeded, proceed to the next pipeline
    stage. Record which provider/model was verified in the project's
    README so later steps (and the user) know what's actually being used.
+6. This same hard-stop-and-verify treatment applies to any other required
+   credential the design carries — a vector store needing its own key
+   (Qdrant Cloud's `QDRANT_URL`/`QDRANT_API_KEY`), or an MCP server whose
+   *underlying* service needs one (a GitHub/Slack MCP server still needs a
+   real GitHub/Slack token). Check `design.md`/`teaching_brief.md` for
+   these and verify each with its own real call the same way — a missing
+   or broken non-LLM credential is exactly as much of a hard stop as a
+   missing LLM key, not a lesser concern.

@@ -39,7 +39,15 @@ answer — they show *why* it's trustworthy.
    precision/recall) if the dependency is available; otherwise fall back to
    a scripted LLM-judge or exact/fuzzy-match check against expected
    behavior — must run with no paid API key too (use a rule-based judge as
-   the no-key fallback).
+   the no-key fallback). For **Agentic RAG** specifically (check whether
+   `agent-agentic-rag` was used and which capabilities it wired), Ragas'
+   `faithfulness` metric is also the groundedness-verification check that
+   skill's capability #6 calls for — run it even if nothing else in this
+   step would otherwise apply, so a groundedness claim is actually
+   measured. Retrieval-quality metrics per retrieval round (Recall/MRR/
+   NDCG), grading precision, routing accuracy, and abstention precision/
+   recall belong to `retrieval-eval-new`'s Step 6, not here — don't
+   duplicate those; this step owns end-to-end answer quality only.
 5. Record results in `## Eval Results` in the project README — actual
    numbers/pass-fail, not a narrative claim of quality.
 6. This skill does not replace `run-and-verify` (one live end-to-end check)

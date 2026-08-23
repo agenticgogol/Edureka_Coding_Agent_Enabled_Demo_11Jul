@@ -1,53 +1,91 @@
 ---
 name: agent-decision-external-tool-sourcing
-description: Use whenever a tool identified during agent-system-design's stage 4 (or any tool inventory step) requires a third-party external service rather than custom in-house logic. Researches current free options first, falls back to presenting real paid pricing for user approval, and if declined, searches for and presents concrete lower-fidelity alternatives (e.g. a public site an agent can check instead of a paid data API) before asking the user to accept a stated capability loss. Never used for LLM/infra cost (that's stage 8's budget decision) — only for sourcing a specific external capability.
+description: Use for every tool identified during agent-system-design's stage 4 (or any tool inventory step), custom-looking or not — first checks whether a free public MCP server already covers the capability (preferred by default whenever one exists, since it means no integration code to write or maintain), then for tools with no MCP coverage and a genuine third-party dependency, researches raw free API options, falls back to presenting real paid pricing for user approval, and if declined, searches for concrete lower-fidelity alternatives before asking the user to accept a stated capability loss. Never used for LLM/infra cost (that's stage 8's budget decision) — only for sourcing a specific capability.
 ---
 
-# Agent Decision: External Tool Sourcing (Free → Paid → Degrade)
+# Agent Decision: Tool Sourcing (MCP → Free → Paid → Degrade)
 
-Decides, for one external-service-backed tool at a time, whether a free
-option covers the actual requirement, whether the user will pay for a
-paid option if not, and — if neither — whether a concrete alternative
-approach (a different, usually lower-fidelity way to approximate the
-same capability) can substitute before falling back to a stated
-capability loss. This is a sourcing/cost decision, distinct from stage
-4's auth-tier decision (read/write, human-approval, idempotency), which
-still applies afterward to whatever tool this skill leaves in place.
+Decides, for one tool/capability at a time: whether an existing public MCP
+server already covers it (preferred by default — check this first, for
+every tool, even one that looks like it'd normally be hand-coded); if not,
+whether a free raw-API option covers it; whether the user will pay for a
+paid option if not; and — if neither — whether a concrete alternative
+approach (a different, usually lower-fidelity way to approximate the same
+capability) can substitute before falling back to a stated capability
+loss. This is a sourcing/cost decision, distinct from stage 4's auth-tier
+decision (read/write, human-approval, idempotency), which still applies
+afterward to whatever tool this skill leaves in place.
 
 ## When to use
 
 - Called once per tool, by `agent-decision-tools-and-authorization`
-  (stage 4 of `/agent-system-design`), for every tool classified as
-  **external** (calls a third-party API/SaaS) rather than **custom**
-  (in-house logic, no third-party dependency — skip this skill entirely
-  for those).
+  (stage 4 of `/agent-system-design`) or `technical-design`, for **every**
+  tool in the inventory — not only ones that obviously need a third-party
+  SaaS. The MCP lookup (step 1) applies even to a capability that could
+  trivially be hand-coded (filesystem read/write, running git commands,
+  querying a local SQLite file, in-memory key-value storage) — public MCP
+  servers exist for exactly these "could be custom, but why write it
+  yourself" cases, and standardizing on them is preferred whenever one
+  fits, not just when a paid SaaS would otherwise be unavoidable.
 - Callable standalone any time a project needs to pick a specific
-  external service for a capability and reason about its cost.
+  implementation for a capability and reason about its cost/build effort.
 - **Not** for LLM provider cost, vector DB hosting, or general
   infrastructure spend — those are stage 8's (`agent-decision-eval-security-guardrails`)
   cost/latency budget, decided at the whole-system level. This skill is
-  scoped to "which specific external tool do we call for this one
-  capability, and can/will we pay for it."
+  scoped to "how do we actually implement this one capability, and
+  can/will we pay for it."
 
 ## Input
 
 - The specific capability the tool needs to provide, in plain language
   (e.g. "real-time web search," "geocode an address," "send SMS,"
-  "look up company firmographic data").
+  "look up company firmographic data," "read/write files on disk," "run
+  git commands").
 - The usecase's actual volume/quality/latency requirement for that
   capability, if known — needed to judge whether a free tier's limits
   are actually a problem or just a number that doesn't matter here.
 
 ## Procedure
 
-### 1. Confirm this tool is genuinely external, not custom
+### 1. Look up whether a public MCP server already covers this capability — for every tool
 
-If the capability can be built with in-house logic and no third-party
-dependency (e.g. a deterministic calculation, a lookup against the
-project's own database), it isn't in scope for this skill — return
-immediately and let stage 4 treat it as a custom tool.
+Do this **first, for every tool**, before asking whether it's "custom" or
+"external" — that classification matters for the sourcing/auth flow below,
+not for whether an MCP lookup is worth doing. `WebSearch` specifically for
+an existing **MCP (Model Context Protocol) server** that already exposes
+this capability as a tool — search the official MCP server registry/index
+(`github.com/modelcontextprotocol/servers`), Anthropic's own MCP
+directory, and general "[capability] MCP server" queries. Public MCP
+servers exist today for things like web search, GitHub, filesystem, git,
+Slack, Google Drive/Maps, Postgres/SQLite, memory/knowledge-graph storage,
+Puppeteer/browser automation, Brave Search, and many SaaS products —
+check even for capabilities that seem trivial to hand-code or seem niche,
+since the MCP ecosystem grows fast and a search costs nothing.
 
-### 2. Research current options — free first, always web-searched
+- **A candidate MCP server is found and covers the capability** → this is
+  the **preferred default**, not one option among several. State it as
+  the recommendation, not a neutral toss-up: "There's a free public MCP
+  server for this — **[server name]**, exposing [what it does], via
+  [stdio package / hosted endpoint]. I'd use this by default (built via
+  `agent-mcp-real`) rather than writing custom code, since it's zero
+  integration/maintenance code either way. Any reason you'd rather I
+  build a custom implementation instead — e.g. a strict data-residency or
+  credential-scoping requirement the server doesn't meet, or a need that's
+  narrower/different from what the server exposes?" If the user has no
+  objection, treat MCP as confirmed without further debate. Record
+  server name, what it exposes, free/open-source/self-hostable vs.
+  requires its own API key for the underlying service, transport, and
+  source/link — then skip straight to step 7.
+- **No MCP server found, and the capability can be built with in-house
+  logic and no third-party dependency** (e.g. a deterministic
+  calculation, a lookup against the project's own database with no
+  off-the-shelf server for it) → record "no MCP server found," classify
+  as custom, and return — let stage 4 treat it as a custom tool with no
+  further sourcing needed.
+- **No MCP server found, and the capability needs a third-party
+  API/SaaS** → continue to step 2.
+
+### 2. Research current raw-API options — free first, always web-searched
 
 Use `WebSearch`/`WebFetch` every time this runs. Pricing and free-tier
 terms change often enough that answering from training data risks
@@ -67,16 +105,18 @@ discontinued. Look for, in this priority order:
 Cite what was actually found (service name, tier, limit, source) — don't
 assert "there's a free tier" without having just confirmed it's still true.
 
-### 3. Judge whether a free option actually covers the requirement
+### 3. Judge whether a free raw-API option actually covers the requirement
 
-A free tier's limit only matters relative to the usecase's real volume.
-100 requests/day is irrelevant friction for a low-volume internal tool
-and a hard blocker for a customer-facing agent expecting thousands of
-daily calls. State this comparison explicitly: "free tier caps at
-[X]; this usecase's expected volume is [Y]; that [does/doesn't] fit."
+(Reached only when step 1 found no covering MCP server and the capability
+needs a third-party API.) A free tier's limit only matters relative to the
+usecase's real volume. 100 requests/day is irrelevant friction for a
+low-volume internal tool and a hard blocker for a customer-facing agent
+expecting thousands of daily calls. State this comparison explicitly:
+"free tier caps at [X]; this usecase's expected volume is [Y]; that
+[does/doesn't] fit."
 
-- **Free option covers it** → recommend it, state the tier/limit in the
-  record, done — skip to step 7.
+- **Free raw-API option covers it** → recommend it, state the tier/limit
+  in the record, done — skip to step 7.
 - **No free option covers it** → continue to step 4.
 
 ### 4. Present the cheapest adequate paid option and ask for a real yes/no
@@ -160,20 +200,30 @@ Return this record to the caller (or, if run standalone, present it
 directly):
 
 ```markdown
-### External sourcing: <tool/capability name>
-- **Researched options**: <what was found, with source/tier/price, and
-  the date framing — "as of this search">
+### Tool sourcing: <tool/capability name>
+- **MCP server lookup (step 1)**: <server name(s) found, what each
+  exposes, free/open-source/self-hostable vs. requires its own API key
+  for the underlying service, transport, source/link — or "none found">
+- **Researched raw-API options** (only if no MCP server covers it and a
+  third-party dependency is genuinely needed): <what was found, with
+  source/tier/price, and the date framing — "as of this search">
 - **Alternative approaches considered** (only if paid was declined):
   <each alternative found in step 5, with its specific tradeoff, or "none
   found" if step 5 turned up nothing usable>
-- **Decision**: <Free (service, tier/limit) | Paid-approved (service,
-  price, user confirmed) | Alternative-approach (which one, its accepted
-  tradeoff) | Declined — degraded (service+limits accepted) | Declined —
-  omitted (no substitute, capability dropped)>
+- **Decision**: <MCP-server (name, transport — the default whenever step 1
+  found one and the user didn't object) | Custom (no MCP found, no
+  third-party dependency needed) | Free (service, tier/limit) |
+  Paid-approved (service, price, user confirmed) | Alternative-approach
+  (which one, its accepted tradeoff) | Declined — degraded (service+limits
+  accepted) | Declined — omitted (no substitute, capability dropped)>
 - **Capability impact**: <"None — free tier covers expected volume" |
   the alternative's stated tradeoff as accepted | exact statement of what
   the agent can't do, or does with degraded reliability, as confirmed
   with the user in step 6>
+- **Build note**: <if Decision is MCP-server: "build via `agent-mcp-real`,
+  connecting as a client to [server]" — this is what stage 4/technical-design
+  carries forward so the later build step doesn't write custom API code for
+  a capability an MCP server already covers>
 ```
 
 ## Ground rules
@@ -196,3 +246,17 @@ directly):
 - If research turns up no clear pricing (opaque "contact sales" tiers),
   say so explicitly and treat it the same as "no confirmed paid option"
   — ask the user how they want to proceed rather than guessing a price.
+- Never skip the MCP-server lookup (step 1) for any tool, including one
+  that looks obviously "custom" or trivially hand-codable — the whole
+  point is that MCP now covers many things that used to default to custom
+  code, and skipping the check because a tool "seems simple" is exactly
+  how that default goes stale.
+- When a covering MCP server is found, treat it as the **default choice**,
+  not a neutral option presented alongside a custom build — the burden is
+  on a reason to build custom (data residency, credential scoping, a
+  narrower/different need than the server exposes), not on a reason to
+  use the server.
+- Never claim an MCP server exists for a capability without having just
+  searched for it — the MCP ecosystem is new and fast-moving; a remembered
+  server name from training data may no longer exist, may have moved, or
+  may never have existed at all.
