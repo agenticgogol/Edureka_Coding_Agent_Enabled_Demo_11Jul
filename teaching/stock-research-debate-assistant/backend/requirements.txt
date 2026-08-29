@@ -1,0 +1,34 @@
+# Web framework
+fastapi>=0.115,<0.116
+uvicorn[standard]>=0.32,<0.33
+pydantic>=2.9,<3
+
+# Env/config
+python-dotenv>=1.0,<2
+
+# LLM providers (provider-swappable per backend/agent/llm_client.py)
+anthropic>=0.40,<1
+openai>=1.54,<2
+groq>=0.11,<1
+
+# Agent graph
+langgraph>=0.2.45,<0.3
+
+# Data/tool sourcing
+yfinance>=0.2.44,<0.3
+
+# MCP client (used by backend/agent/tools/news_search.py and fx_rate.py to
+# talk to tavily-mcp and frankfurtermcp over stdio)
+mcp>=1.1.0,<2
+frankfurtermcp>=0.1,<1
+
+# Observability (Phoenix tier 1/2; falls back to structured JSON span logs
+# in backend/observability.py if not installed or launch fails)
+# Phoenix 6.x does not support the Python versions required by the current
+# Frankfurter MCP package. Phoenix 13-20 retains the phoenix.otel API used by
+# backend/observability.py and supports Python 3.12.
+arize-phoenix>=13,<21
+arize-phoenix-otel>=0.6,<1
+openinference-instrumentation>=0.1.17,<1
+opentelemetry-api>=1.27,<2
+opentelemetry-sdk>=1.27,<2

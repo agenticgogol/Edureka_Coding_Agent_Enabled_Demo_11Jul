@@ -37,13 +37,14 @@ you want to run one stage manually instead of the full pipeline.
 | 1 | Draft the brief | `write-project-brief` / `write-concept-brief` | — | `project_brief.md` / `concept_brief.md`, user-approved |
 | 2 | Resolve ambiguity | `clarify-requirements` | `requirements-clarifier` | No open questions remain; decisions recorded in the brief |
 | 3 | **Require API key — hard stop** | `require-api-key` | — | Real provider key present AND verified with an actual call. **No mock mode exists — nothing past this point runs without it.** |
-| 4 | Architecture | `technical-design` | `planner` | `design.md`, user-reviewed |
+| 3.5 | **Architecture design — mandatory for `projects/`, skipped for `concepts/`** | `agent-system-design` (staged) or `agent-architecture-design` (one-shot) — user picks | — | `architecture_design.md` / `system_design/architecture_design.md`, approved. Decides single-vs-multi-agent, the design pattern (deterministic code / fixed workflow / RAG assistant / **Agentic RAG** / bounded ReAct / planner-executor / supervisor / human-governed), and sources every tool (**MCP-server-first, preferred by default**) via `agent-decision-external-tool-sourcing` |
+| 4 | Architecture (project-level) | `technical-design` | `planner` | `design.md`, user-reviewed. If step 3.5 ran, maps its decisions in directly rather than re-deriving them |
 | 5 | Test cases | `write-and-validate-tests` | `planner` | Plain-language test list, **user confirms it matches intent** |
 | 6 | Task breakdown | `make-plan` | `planner` | `plan.md`, ends with integrate-and-assemble + run-and-verify |
 | 7 | Env + deps | `setup-venv`, `pick-requirements` | `backend-builder` | venv created, `requirements.txt`/`package.json` pinned |
 | 8 | Shared plumbing | `helper-utils` (copies from `_shared/`) | `backend-builder` | `config.py`, `llm_client.py` in place, real provider wired, no mock fallback |
 | 9 | Backend | `backend-fastapi` | `backend-builder` | API contract from `design.md` implemented |
-| 10 | Agent/graph | `agent-langgraph` (default) / `agent-crewai` / `agent-dspy` / `agent-mcp-real` / `agent-graphrag` — pick the one `design.md` names | `agent-builder` | Agent module with one clean entrypoint; **research-first + spike-first required for every option except agent-langgraph** |
+| 10 | Agent/graph | `agent-langgraph` (default) / `agent-crewai` / `agent-dspy` / `agent-mcp-real` / `agent-graphrag` / `agent-agentic-rag` — pick the one `design.md` names | `agent-builder` | Agent module with one clean entrypoint; **research-first + spike-first required for every option except agent-langgraph and agent-agentic-rag** (the latter is a LangGraph topology, not a separate framework) |
 | 11 | Frontend | `frontend-nextjs` (default) or `frontend-streamlit` / `notebook-concept` | `frontend-builder` | UI calling only documented endpoints |
 | 12 | Implement tests per-slice | (continuation of `write-and-validate-tests`) | whichever builder owns the code under test | Each builder's own new tests green before moving to the next slice |
 | 13 | **Full test gate** | `run-tests` | `integrator` | **This is the step that certifies "tests passed."** Real captured pass/fail output, full suite, 100% green or documented skips |
@@ -101,11 +102,23 @@ iterates on real errors (reproduce → diagnose → fix one hypothesis → re-ru
   skill matching what `design.md` names. Substituting `agent-langgraph`
   for a brief that names CrewAI or DSPy is exactly the "substitution not
   allowed" failure this repo's rules forbid elsewhere (see `AGENTS.md`).
+  This applies equally to Agentic RAG vs. plain RAG vs. GraphRAG — a brief
+  whose retrieval needs are dynamic (see `technical-design`'s Agentic RAG
+  detection step) must get `agent-agentic-rag`, not a silently downgraded
+  fixed-pipeline `vector-store` call. It also applies to tools: a
+  capability with an available free public MCP server is the **preferred
+  default** (see `agent-decision-external-tool-sourcing`'s step 1, which
+  now runs for every tool, not only ones that look like they need a
+  third-party SaaS) — never write custom tool-calling code for a
+  capability a public MCP server already covers without at least offering
+  it to the user first.
 - **Research-first and spike-first apply only where they earn their cost.**
   LangGraph/FastAPI/Next.js are stable and well-represented in the model's
-  training data — skip the extra step there. CrewAI, DSPy, real MCP, and
-  GraphRAG are narrower and faster-moving, so those skills mandate a docs
-  check and a standalone spike before the API is trusted.
+  training data — skip the extra step there. `agent-agentic-rag` is a
+  LangGraph topology, not a separate library, so it shares that exemption.
+  CrewAI, DSPy, real MCP, and GraphRAG are narrower and faster-moving, so
+  those skills mandate a docs check and a standalone spike before the API
+  is trusted.
 - **Security and eval run after code exists but before integration.**
   Checking a fully-formed backend/agent is more useful than checking
   partial code, but catching a rejected-SQL-injection gap here is cheaper
@@ -208,6 +221,23 @@ Plus, unchanged from before:
 - *"The brief is vague on X."* → `clarify-requirements` — ask, don't guess.
 - *"Which agent framework skill do I use?"* → whatever `design.md` names.
   Default is `agent-langgraph`. Never substitute for a named framework.
+- *"The brief needs retrieval and the retrieval itself needs to be
+  dynamic (retry, self-grade, route, multi-hop, verify, abstain)"* →
+  `agent-agentic-rag`, not plain `vector-store`-only RAG. See
+  `technical-design`'s detection step / `agent-decision-design-pattern`'s
+  Q3 for how this gets decided.
+- *"The brief needs a tool/capability — is there a public MCP server for
+  it?"* → `technical-design`'s tool-enumeration step (or stage 4's
+  `agent-decision-tools-and-authorization`, or `agent-architecture-design`'s
+  step 3b for the one-shot design track) invokes
+  `agent-decision-external-tool-sourcing` for **every** tool, including
+  ones that look purely custom — it searches for a free public MCP server
+  first and **recommends it by default** if one is found, only falling
+  back to a raw API/custom code if none exists or the user gives a
+  specific reason not to use it. If chosen, build it via `agent-mcp-real`
+  Mode B (connect as a client) — never hand-write custom tool-calling code
+  for a capability a public MCP server already covers without at least
+  offering it first.
 - *"Do I need `security-check`?"* → yes if the project calls tools, touches
   a database, or ingests content the user didn't type directly.
 - *"Do I need `eval-and-observability`?"* → yes if it's RAG or the brief

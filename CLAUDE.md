@@ -1,15 +1,16 @@
-# Coding_Agent_Enabled_Demo — Instructions for Claude Code
+# Coding_Agent_Enabled_Demo — Instructions for Claude Code / OpenCode
 
 This directory is a workshop for building end-to-end projects and atomic
 concept demos entirely by conversing with a coding agent (Claude Code /
-Codex), starting from a single human-written brief.
+OpenCode / Codex), starting from a single human-written brief.
 
-**Drive this with the slash commands in `.claude/commands/`** —
-`/new-project`, `/new-concept`, `/run-pipeline`, `/test-project`,
-`/status-project` — rather than expecting skills to sequence themselves;
-skills are capabilities the agent draws on, they don't self-trigger in
-order. See `WORKFLOW.md` for the full sequence table, the invocation
-model, and the command reference.
+**Drive this with the slash commands in `.claude/commands/` (Claude Code) or
+`.opencode/commands/` (OpenCode)** — `/new-project`, `/new-concept`,
+`/run-pipeline`, `/test-project`, `/status-project`, `/new-teaching-demo`,
+`/run-teaching-pipeline` — rather than expecting skills to sequence themselves;
+skills are capabilities the agent draws on, they don't self-trigger in order.
+See `WORKFLOW.md` for the full sequence table, the invocation model, and the
+command reference.
 
 ## The workflow (always follow this order)
 
@@ -26,6 +27,17 @@ model, and the command reference.
     completely — do not draft `design.md`, do not write any code, do not
     create stub/placeholder implementations "for now." Nothing proceeds
     until a real, working key is confirmed.
+2b. **Architecture design — mandatory for `projects/`, skipped for
+    `concepts/`.** Use `agent-system-design` (staged, 8 gated stages) or
+    `agent-architecture-design` (one-shot) — the user picks which. This is
+    where single-vs-multi-agent, the design pattern (deterministic code /
+    fixed workflow / RAG assistant / **Agentic RAG** / bounded ReAct /
+    planner-executor / supervisor / human-governed) and every tool's
+    sourcing (**MCP-server-first, preferred by default** whenever a free
+    public server covers the capability) actually get decided, before
+    `design.md` exists. Produces `architecture_design.md` or
+    `system_design/`, approved. `technical-design` (step 3) then maps this
+    directly into `design.md` instead of re-deriving it.
 3. **Design.** Use `technical-design` to produce `design.md` — architecture,
    data flow, API contracts, tech choices. No code yet.
 4. **Write and validate tests.** Use `write-and-validate-tests` to draft
@@ -39,9 +51,12 @@ model, and the command reference.
 6. **Build.** Work through `plan.md` task by task using the component
    skills. For agent/graph logic, pick the skill matching the framework
    `design.md` names — `agent-langgraph` (default), `agent-crewai`,
-   `agent-dspy`, `agent-mcp-real`, `agent-graphrag` — never substitute
+   `agent-dspy`, `agent-mcp-real`, `agent-graphrag`, `agent-agentic-rag`
+   (for retrieval whose querying itself needs to be dynamic — see
+   `technical-design`'s detection step) — never substitute
    `agent-langgraph` for a framework named explicitly. For anything other
-   than LangGraph, run `research-first` before coding and spike a
+   than LangGraph or Agentic RAG (the latter is a LangGraph topology, not
+   a separate framework), run `research-first` before coding and spike a
    standalone script before wiring into the project (see `agent-builder`).
 7. **Run tests.** Run `run-tests` — the single owner of "did the tests
    pass." Full-suite run with real captured output, 100% green (or
@@ -90,14 +105,60 @@ model, and the command reference.
   missing key, even temporarily.
 - Preserve existing completed projects/concepts. Do not regenerate or
   silently rewrite them.
+- **Never spend real LLM API money on testing/verification without the
+  user's prior approval and an approximate cost estimate — strict,
+  repo-wide, every project/concept/teaching demo.** This covers any run
+  that hits a real provider purely to verify code works: full test-suite
+  runs with real-LLM tests, ad hoc verification calls, re-running a suite
+  after a fix, `run-and-verify` passes, agent-spawned test runs. Before
+  triggering any of these, tell the user roughly how many real calls will
+  fire and an approximate cost, and wait for their go-ahead — do not just
+  proceed because "tests should pass." This does NOT apply to the user
+  actively using the built product themselves (e.g. driving a live chat
+  session, using the app) — that's normal usage, not agent-initiated
+  testing spend. If a subagent is spawned to build/test something, this
+  instruction must be passed to it explicitly, since subagents don't
+  inherit conversation-level approvals.
 
-## Subagents available (`.claude/agents/`)
+## AI-eval-suite invariants (`.claude/skills/eval-*`, `evallib/`)
+
+The eval suite built under `.claude/skills/eval-*`, `evallib/`, and
+`.claude/agents/{trace-reader,taxonomy-synthesizer,judge-runner,eval-critic}`
+runs as a gated state machine (`eval-loop`, phases 0-8). Three invariants
+hold across every phase and every skill in that suite, not just the ones
+that state them locally:
+
+1. **No metrics before error analysis.** A judge or a `MetricsRecord` must
+   never exist for a failure mode that wasn't derived from real open/axial
+   coding (`evals/open_codes.jsonl` -> `evals/taxonomy.yaml`). Metrics
+   measure a category; if the category was invented rather than observed,
+   the metric is measuring nothing real. `eval-loop`'s Gate A and
+   `eval-critic`'s check 1 both enforce this — if you find yourself about
+   to write a judge prompt or a metrics entry for a category that isn't in
+   `taxonomy.yaml` with real `member_trace_ids`, stop.
+2. **No statistics computed by the model.** Cohen's kappa, TPR/TNR, bias
+   correction, bootstrap CIs, and stratified splitting exist in exactly one
+   place: `evallib/stats.py`. No skill, no subagent, and no ad hoc inline
+   calculation may reimplement or approximate these — always import and
+   call the function. This is not a style preference: a second
+   hand-derived copy of a formula drifts from the first, silently, and
+   nothing catches it until the numbers disagree.
+3. **No test-split reads during iteration.** `evals/labels/test.jsonl` may
+   be read or edited exactly once per calibration cycle, at explicit user
+   confirmation that iteration is over, with `EVAL_FINAL_VALIDATION=1` set
+   for that call — enforced mechanically by the `PreToolUse` hook at
+   `.claude/hooks/lock_test_split.py` (installed by `eval-ci-new`), not just
+   by instruction. A test-split read during dev-phase judge iteration
+   invalidates the TPR/TNR computed from it; there is no statistical fix
+   afterward, only a fresh `stratified_split` with a new seed.
+
+## Subagents available (`.claude/agents/`, mirrored to `.opencode/agents/`)
 
 `requirements-clarifier`, `planner`, `frontend-builder`, `backend-builder`,
 `agent-builder`, `integrator`, `reviewer`. See each agent file for its exact
-scope boundary and, for `agent-builder`, the research-first/spike-first
-rules. Use them to keep context isolated per slice on larger projects; for
-small concepts, working directly in the main conversation is fine.
+scope boundary and, for `agent-builder`, the research-first/spike-first rules.
+Use them to keep context isolated per slice on larger projects; for small
+concepts, working directly in the main conversation is fine.
 
 ## Validation
 

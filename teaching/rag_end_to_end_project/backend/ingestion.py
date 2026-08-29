@@ -57,7 +57,7 @@ def extract_text_from_file(filename: str, file_bytes: bytes) -> str:
     lower = filename.lower()
     if lower.endswith(".pdf"):
         return extract_text_from_pdf(file_bytes)
-    return extract_text_from_plain(file_bytes)
+    return extract_text_from_plain(file_bytes)/e
 
 
 def extract_text_from_url(url: str) -> str:

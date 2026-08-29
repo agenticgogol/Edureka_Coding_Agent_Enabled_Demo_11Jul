@@ -1,23 +1,34 @@
-# Coding_Agent_Enabled_Demo — Codex Instructions
+# Coding_Agent_Enabled_Demo — Agent Instructions
 
 This directory is a workshop for building end-to-end projects, atomic
-concept demos, and lightweight teaching demos by conversing with Codex,
-starting from a single human-written brief.
+concept demos, and lightweight teaching demos by conversing with agent-based
+tools (Claude Code, OpenCode, Codex), starting from a single human-written brief.
 
-Use `WORKFLOW.md` as the canonical process reference. The Codex-facing
+Use `WORKFLOW.md` as the canonical process reference. The toolchain-facing
 assets are:
 
-- `skills/` — reusable Codex skills for each workflow capability.
-- `agents/` — role prompts copied from the original subagent definitions;
-  use them as scope boundaries when delegating work or keeping slices
-  isolated.
-- `prompts/` — slash-command style prompt recipes from the original Claude
-  setup. Codex does not need these to auto-run; read the matching prompt
-  when the user asks for that workflow.
-- `.codex-plugin/plugin.json` — local plugin manifest exposing `skills/`.
+- `skills/` — reusable skills for each workflow capability (Codex plugin, opencode auto-loaded).
+- `agents/` — role prompts for scope boundaries when delegating work or keeping slices isolated.
+- `prompts/` — slash-command style prompt recipes (`/new-teaching-demo`, `/run-teaching-pipeline`, etc).
+- `.opencode/` — opencode config with skills, agents, commands, and plugin registration.
+- `.codex-plugin/plugin.json` — Codex plugin manifest exposing `skills/`.
+- `.claude/` — legacy Claude Code assets for backwards compatibility.
 
-The legacy Claude Code assets remain under `.claude/` for backwards
-compatibility. Prefer the Codex-facing paths above when working in Codex.
+## Opencode Setup
+
+Skills are auto-discovered from `.opencode/skills/`, `.claude/skills/`, and `skills/`.
+Commands are auto-discovered from `.opencode/commands/` and `.claude/commands/`.
+Agents are defined in `.opencode/agents/` with symlinks to `agents/`.
+
+Restart opencode after config changes for them to take effect.
+
+## Tools Supported
+
+| Tool | Support |
+|------|---------|
+| Claude Code | `.claude/skills/`, `.claude/agents/`, `.claude/commands/` |
+| OpenCode | `.opencode/skills/`, `.opencode/agents/`, `.opencode/commands/`, `opencode.json` |
+| Codex | `skills/`, `agents/`, `prompts/`, `.codex-plugin/plugin.json` |
 
 ## Mandatory Workflow
 

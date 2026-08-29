@@ -16,3 +16,7 @@ nbconvert
 arize-phoenix
 arize-phoenix-client
 openinference-instrumentation-langchain
+fastmcp
+mcp
+langchain-mcp-adapters
+nest_asyncio
