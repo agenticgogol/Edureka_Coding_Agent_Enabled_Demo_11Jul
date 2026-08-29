@@ -31,11 +31,13 @@ from langgraph.types import Send
 from .nodes.debate import run_debate, run_risk_refine
 from .nodes.fetch import fetch_fx_node, fetch_news_node, fetch_price_node, skip_news_node
 from .nodes.judge import run_judge
-from .nodes.light_answers import answer_drill_down, answer_follow_up, decline, invalid_ticker
+from .nodes.light_answers import answer_allocation, answer_drill_down, answer_follow_up, decline, invalid_ticker
 from .nodes.orchestrator import route
+from .nodes.portfolio import optimize_node
 from .state import GraphState
 
 _FRESH_PIPELINE_TURN_TYPES = {"new_analysis", "topic_switch", "comparison"}
+_ALLOCATION_FETCH_TURN_TYPES = {"allocation_new", "allocation_list_change"}
 
 
 def _route_after_orchestrator(state: GraphState):
@@ -47,22 +49,32 @@ def _route_after_orchestrator(state: GraphState):
         return "drill_down_answer"
     if turn_type == "follow_up":
         return "follow_up_answer"
+    if turn_type in {"allocation_compare", "allocation_drill_down"}:
+        return "allocation_answer"
     if turn_type == "refinement":
         return "risk_refine"
 
-    if turn_type in _FRESH_PIPELINE_TURN_TYPES:
+    if turn_type in _ALLOCATION_FETCH_TURN_TYPES or turn_type in _FRESH_PIPELINE_TURN_TYPES:
         tickers = state.get("tickers", [])
         if not tickers:
             return "invalid_ticker"
         selected_tools = state.get("selected_tools", [])
         sends: list[Send] = []
+        existing = state.get("fetched_data", {})
         for ticker in tickers:
+            if turn_type in _ALLOCATION_FETCH_TURN_TYPES and ticker in existing and existing[ticker].get("price_fundamentals"):
+                continue
             sends.append(Send("fetch_price", {**state, "_fetch_ticker": ticker}))
             if "news" in selected_tools:
                 sends.append(Send("fetch_news", {**state, "_fetch_ticker": ticker}))
-        if "news" not in selected_tools:
+        if "news" not in selected_tools and turn_type not in _ALLOCATION_FETCH_TURN_TYPES:
             sends.append(Send("skip_news", state))
+        if turn_type in _ALLOCATION_FETCH_TURN_TYPES and not sends:
+            return "fetch_fx"
         return sends
+
+    if turn_type == "allocation_parameter_change":
+        return "optimizer"
 
     # Defensive fallback: an unrecognized turn_type is treated as a fresh
     # analysis attempt rather than silently dropping the turn.
@@ -78,10 +90,12 @@ def build_graph():
     workflow.add_node("skip_news", skip_news_node)
     workflow.add_node("fetch_fx", fetch_fx_node)
     workflow.add_node("debate", run_debate)
+    workflow.add_node("optimizer", optimize_node)
     workflow.add_node("risk_refine", run_risk_refine)
     workflow.add_node("judge", run_judge)
     workflow.add_node("drill_down_answer", answer_drill_down)
     workflow.add_node("follow_up_answer", answer_follow_up)
+    workflow.add_node("allocation_answer", answer_allocation)
     workflow.add_node("decline", decline)
     workflow.add_node("invalid_ticker", invalid_ticker)
 
@@ -93,13 +107,15 @@ def build_graph():
     workflow.add_edge("fetch_news", "fetch_fx")
     workflow.add_edge("skip_news", "fetch_fx")
 
-    workflow.add_edge("fetch_fx", "debate")
+    workflow.add_conditional_edges("fetch_fx", lambda state: "optimizer" if state.get("allocation_requested") else "debate")
+    workflow.add_conditional_edges("optimizer", lambda state: "debate" if state.get("allocation_output") else END)
     workflow.add_edge("debate", "judge")
     workflow.add_edge("risk_refine", "judge")
 
     workflow.add_edge("judge", END)
     workflow.add_edge("drill_down_answer", END)
     workflow.add_edge("follow_up_answer", END)
+    workflow.add_edge("allocation_answer", END)
     workflow.add_edge("decline", END)
     workflow.add_edge("invalid_ticker", END)
 

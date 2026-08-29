@@ -16,6 +16,8 @@ langgraph>=0.2.45,<0.3
 
 # Data/tool sourcing
 yfinance>=0.2.44,<0.3
+numpy>=1.26,<3
+scipy>=1.12,<2
 
 # MCP client (used by backend/agent/tools/news_search.py and fx_rate.py to
 # talk to tavily-mcp and frankfurtermcp over stdio)

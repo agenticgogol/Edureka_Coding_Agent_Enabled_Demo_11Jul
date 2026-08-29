@@ -67,3 +67,27 @@ writes structured spans to `backend/data/trace_log.jsonl`.
    risk tolerance and relevant prior ticker analysis.
 
 All live calls require the configured real provider and Tavily credentials.
+
+## Milestone 2 allocation output
+
+Enable **Allocation mode** in the sidebar or ask a natural-language question
+such as:
+
+```text
+I have $100,000 to invest across AAPL, MSFT, and JNJ. How should I split it?
+```
+
+The result includes each ticker's percentage and currency amount, overall
+historical annualized return, historical annualized volatility, equal-weight
+return/volatility, per-asset risk contribution, sector concentration, and the
+optimizer's deterministic allocation reasoning. These figures use historical
+prices through the displayed date; they are not forecasts or guarantees.
+
+## Cost controls
+
+The default LLM output budget is capped at 1024 tokens per call. Override it
+with `LLM_MAX_OUTPUT_TOKENS` when teaching a larger response. Allocation
+turns use one bull/bear/risk opening round because all weights and metrics are
+already computed deterministically; the original two-round stock debate is
+unchanged. Allocation questions also send only compact summaries to the LLM,
+while the full historical series remains local to the optimizer.

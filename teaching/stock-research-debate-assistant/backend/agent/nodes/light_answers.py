@@ -44,9 +44,12 @@ def answer_follow_up(state: GraphState) -> dict:
     """Answers from already-fetched data + transcript, without re-running
     the fan-out or the full debate (e.g. "what about its revenue growth"
     on an already-analyzed ticker)."""
-    fetched_summary = "\n".join(
-        f"{ticker}: {state.get('fetched_data', {}).get(ticker)}" for ticker in state.get("tickers", [])
-    )
+    summaries = []
+    for ticker in state.get("tickers", []):
+        data = state.get("fetched_data", {}).get(ticker, {})
+        pf = data.get("price_fundamentals") or {}
+        summaries.append(f"{ticker}: { {key: value for key, value in pf.items() if key != 'price_history'} }")
+    fetched_summary = "\n".join(summaries)
     answer = complete(
         prompt=(
             f"User's follow-up question: {state['user_message']}\n\n"
@@ -66,11 +69,34 @@ def answer_follow_up(state: GraphState) -> dict:
     }
 
 
+def answer_allocation(state: GraphState) -> dict:
+    """Answer allocation comparisons/drill-downs from stored optimizer output."""
+    output = state.get("allocation_output") or {}
+    if not output:
+        answer = "There is no computed allocation in this session yet. Ask for an allocation first."
+    else:
+        answer = complete(
+            prompt=(
+                f"User's allocation question: {state['user_message']}\n\n"
+                f"Computed optimizer output (the numbers are authoritative):\n{output}"
+            ),
+            system=(
+                "Explain the allocation using only the computed optimizer output. "
+                "Do not recompute or invent weights, returns, or risk metrics. "
+                "State clearly that the metrics are historical, not a forecast."
+            ),
+            model=state.get("model"), provider=state.get("provider"), api_key=state.get("api_key"),
+        )
+    return {
+        "final_answer": answer,
+        "trail": [{"step": "allocation_answer", "ticker": None, "status": "done", "detail": "answered from stored optimizer output; no recomputation"}],
+    }
+
+
 _DECLINE_REASONS = {
     "mutual_funds": "This assistant analyzes individual stocks, not mutual funds.",
     "market_timing": "This assistant does not predict short-term price movements or market timing.",
     "options_derivatives": "This assistant does not cover options, derivatives, or leveraged instruments.",
-    "portfolio_optimization": "This assistant does not do portfolio allocation or optimization across multiple tickers.",
     "trading_execution": "This assistant cannot place trades or perform brokerage actions.",
 }
 

@@ -14,7 +14,7 @@ class TickerNotFoundError(RuntimeError):
     """Raised when yfinance returns no usable price/fundamentals data."""
 
 
-def fetch_price_fundamentals(ticker: str, history_period: str = "6mo", history_interval: str = "1d") -> dict:
+def fetch_price_fundamentals(ticker: str, history_period: str = "5y", history_interval: str = "1d") -> dict:
     """Fetch price, fundamentals, and OHLC history for one ticker.
 
     `ticker` is used as given (e.g. "AAPL", "RELIANCE.NS", "TCS.BO") —

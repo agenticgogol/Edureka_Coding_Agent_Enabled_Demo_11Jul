@@ -10,7 +10,7 @@ import json
 import re
 
 from ..llm_client import complete
-from ..state import GraphState
+from ..state import GraphState, emit_progress
 
 _SYSTEM_PROMPT = """You are the routing brain for a stock-research debate assistant. \
 Given the user's latest message, prior context (previous tickers, whether data was \
@@ -32,11 +32,16 @@ investment horizon, or "assume a 5-year horizon" — this should re-run only the
 assessment and judge synthesis.
 - "out_of_scope": the request falls into one of these explicit non-goal categories: \
 mutual funds, market timing / short-term price prediction, options / derivatives / \
-leverage, portfolio allocation or optimization across multiple tickers, or real \
+leverage, or real \
 trading / brokerage actions (e.g. "place this trade for me"). Comparing two SPECIFIC \
 stocks the user names is NOT portfolio optimization and is NOT out of scope — only \
 classify out_of_scope when the request matches one of these categories, not merely \
 because it mentions money or stocks.
+- "allocation_new": multiple tickers plus an investment amount for an allocation.
+- "allocation_list_change": add or remove tickers from an existing allocation.
+- "allocation_parameter_change": change target return, risk, or horizon.
+- "allocation_compare": compare the existing allocation with equal weight.
+- "allocation_drill_down": explain an existing allocation weight or risk contribution.
 
 Tool selection (pick zero or more from ["price_fundamentals", "news", "fx"]), only \
 relevant for new_analysis / topic_switch / comparison:
@@ -51,14 +56,19 @@ Extract ticker symbols exactly as the user would type them into yfinance (e.g. A
 MSFT, RELIANCE.NS, TCS.NS, INFY.BO). For follow_up/drill_down/refinement, resolve \
 pronouns ("it", "that stock") to the ticker(s) already in context.
 
-Respond with ONLY a JSON object, no prose, no markdown fences:
+For allocation turns, also extract the investment amount and currency when
+present, plus a target annual return as a decimal (8% becomes 0.08). Do not
+invent missing values. Respond with ONLY a JSON object, no prose, no markdown fences:
 {
   "turn_type": "...",
   "tickers": ["..."],
   "selected_tools": ["..."],
   "needs_fx": true/false,
   "out_of_scope_reason": "..." or null,
-  "notes": "one short sentence explaining the classification"
+  "notes": "one short sentence explaining the classification",
+  "allocation_amount": number or null,
+  "allocation_currency": "USD" or "INR" or null,
+  "target_return": number or null
 }
 """
 
@@ -71,6 +81,7 @@ def _extract_json(raw: str) -> dict:
 
 
 def route(state: GraphState) -> dict:
+    emit_progress(state, "orchestrator_route", "started", "Classifying request and selecting tools")
     prior_tickers = state.get("tickers", [])
     has_prior_data = bool(state.get("fetched_data"))
     transcript_summary = "\n".join(
@@ -95,12 +106,25 @@ def route(state: GraphState) -> dict:
     tickers = [t.strip().upper() for t in parsed.get("tickers", []) if t.strip()] or prior_tickers
     turn_type = parsed.get("turn_type", "new_analysis")
     selected_tools = parsed.get("selected_tools", [])
+    allocation_requested = turn_type.startswith("allocation")
+    allocation_amount = parsed.get("allocation_amount")
+    if isinstance(allocation_amount, str):
+        allocation_amount = float(re.sub(r"[^0-9.]", "", allocation_amount) or 0)
+    if allocation_amount is None:
+        allocation_amount = state.get("allocation_amount")
+    allocation_currency = parsed.get("allocation_currency") or state.get("allocation_currency")
+    target_return = parsed.get("target_return")
+    if isinstance(target_return, (int, float)) and target_return > 1:
+        target_return /= 100
+    if target_return is None:
+        target_return = state.get("allocation_target_return")
     trail_event = {
         "step": "orchestrator_route",
         "ticker": None,
         "status": "done",
         "detail": f"turn_type={turn_type}, tickers={tickers}, tools={selected_tools}",
     }
+    emit_progress(state, "orchestrator_route", "done", trail_event["detail"])
 
     return {
         "turn_type": turn_type,
@@ -109,5 +133,10 @@ def route(state: GraphState) -> dict:
         "needs_fx": bool(parsed.get("needs_fx", False)),
         "out_of_scope_reason": parsed.get("out_of_scope_reason"),
         "router_notes": parsed.get("notes", ""),
+        "allocation_requested": allocation_requested,
+        "allocation_amount": allocation_amount,
+        "allocation_currency": allocation_currency,
+        "allocation_target_return": target_return,
+        "allocation_question": state["user_message"] if allocation_requested else None,
         "trail": [trail_event],
     }

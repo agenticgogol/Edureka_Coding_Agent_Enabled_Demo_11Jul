@@ -36,6 +36,10 @@ _PERSISTABLE_KEYS = (
     "refinements",
     "transcript",
     "trail",
+    "allocation_output",
+    "allocation_amount",
+    "allocation_currency",
+    "allocation_target_return",
 )
 
 
@@ -47,6 +51,7 @@ def run_turn(
     provider: str | None = None,
     model: str | None = None,
     api_key: str | None = None,
+    progress_callback=None,
 ) -> dict:
     """Runs one chat turn through the graph and returns the updated,
     fully self-contained session state plus this turn's outputs.
@@ -86,6 +91,11 @@ def run_turn(
         "refinements": previous.get("refinements", {}),
         "transcript": previous.get("transcript", []),
         "trail": previous_trail,
+        "allocation_output": previous.get("allocation_output", {}),
+        "allocation_amount": previous.get("allocation_amount"),
+        "allocation_currency": previous.get("allocation_currency"),
+        "allocation_target_return": previous.get("allocation_target_return"),
+        "_progress_callback": progress_callback,
     }
 
     stated_tolerance = _extract_risk_tolerance_mention(user_message)
@@ -94,8 +104,13 @@ def run_turn(
         initial_state["risk_tolerance"] = stated_tolerance
         initial_state["refinements"] = {**initial_state["refinements"], "risk_tolerance": stated_tolerance}
         memory.save_risk_tolerance(user_key, stated_tolerance)
-    elif session_state is None and initial_state["risk_tolerance"]:
+    if session_state is None and initial_state["risk_tolerance"]:
         memory_notes.append(f"I remember you previously described yourself as a {initial_state['risk_tolerance']}-risk investor.")
+    if session_state is None:
+        prior_allocation = memory.get_latest_allocation(user_key)
+        if prior_allocation:
+            tickers = ", ".join(prior_allocation["output"].get("tickers", []))
+            memory_notes.append(f"I remember your previous allocation approach for {tickers}; I can use it as context for this new request.")
 
     graph = get_graph()
     result: GraphState = graph.invoke(initial_state)
@@ -110,6 +125,8 @@ def run_turn(
     if result.get("stance") and result.get("tickers"):
         for ticker in result["tickers"]:
             memory.save_analysis(ticker, result.get("final_answer", ""), result.get("stance"))
+    if result.get("allocation_output"):
+        memory.save_allocation(user_key, result["allocation_output"], result.get("final_answer", ""))
 
     updated_session_state = {key: result.get(key, initial_state.get(key)) for key in _PERSISTABLE_KEYS}
     new_trail_events = result.get("trail", [])[len(previous_trail):]

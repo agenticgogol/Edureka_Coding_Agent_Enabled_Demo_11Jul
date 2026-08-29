@@ -31,3 +31,9 @@ shows a connection error rather than fabricating a response.
 - Large values are displayed compactly in cards using `K`, `Mn`, `Bn`, and
   `Tn` suffixes. Each completed turn also shows a progress bar and a compact
   stage summary before the expanded reasoning details.
+- Allocation mode adds structured ticker, amount, currency, and optional
+  target-return controls; natural-language allocation questions remain
+  supported as well.
+- Chat requests use a backend job endpoint and poll real graph progress events
+  while the request runs. The completed response stores the same trail in the
+  turn expander, so progress remains visible after the answer arrives.

@@ -7,6 +7,7 @@ teaching demo's scope) and delegating all agent/graph logic to
 from __future__ import annotations
 
 import uuid
+import threading
 
 from fastapi import APIRouter, HTTPException
 
@@ -26,6 +27,7 @@ router = APIRouter()
 # by `run_turn`. Per the teaching brief's scope, no Redis/durable storage —
 # state is lost on process restart, which is fine for a demo.
 _SESSIONS: dict[str, dict] = {}
+_JOBS: dict[str, dict] = {}
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -77,3 +79,51 @@ def chat(payload: ChatRequest) -> ChatResponse:
         trail_events=result.get("new_trail_events", []),
         memory_note=result.get("memory_note"),
     )
+
+
+def _run_chat_job(job_id: str, payload: ChatRequest) -> None:
+    job = _JOBS[job_id]
+    try:
+        previous_state = _SESSIONS.get(payload.session_id)
+        result = run_turn(
+            previous_state,
+            payload.message,
+            user_key=payload.user_key,
+            provider=payload.provider,
+            model=payload.model,
+            api_key=payload.api_key,
+            progress_callback=lambda event: job["events"].append(event),
+        )
+        _SESSIONS[payload.session_id] = result["session_state"]
+        job["response"] = {
+            "final_answer": result.get("final_answer", ""),
+            "stance": result.get("stance").lower() if isinstance(result.get("stance"), str) else None,
+            "trail_events": result.get("new_trail_events", []),
+            "memory_note": result.get("memory_note"),
+        }
+        job["status"] = "complete"
+    except Exception as exc:  # noqa: BLE001
+        job["error"] = str(exc)
+        job["status"] = "error"
+
+
+@router.post("/chat/start")
+def start_chat(payload: ChatRequest) -> dict:
+    job_id = str(uuid.uuid4())
+    _JOBS[job_id] = {"status": "running", "events": [], "response": None, "error": None}
+    thread = threading.Thread(target=_run_chat_job, args=(job_id, payload), daemon=True)
+    thread.start()
+    return {"job_id": job_id}
+
+
+@router.get("/chat/jobs/{job_id}")
+def chat_job_status(job_id: str) -> dict:
+    job = _JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Unknown job_id '{job_id}'.")
+    return {
+        "status": job["status"],
+        "events": list(job["events"]),
+        "response": job["response"],
+        "error": job["error"],
+    }

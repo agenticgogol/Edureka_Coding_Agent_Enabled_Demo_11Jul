@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import json
 from contextlib import closing
 from datetime import datetime, timezone
 
@@ -31,6 +32,12 @@ CREATE TABLE IF NOT EXISTS ticker_analysis (
     ticker TEXT PRIMARY KEY,
     synthesis TEXT NOT NULL,
     stance TEXT,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS allocation_analysis (
+    user_key TEXT PRIMARY KEY,
+    output_json TEXT NOT NULL,
+    synthesis TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 """
@@ -92,5 +99,28 @@ def save_analysis(ticker: str, synthesis: str, stance: str | None = None) -> Non
                 updated_at = excluded.updated_at
             """,
             (ticker.upper(), synthesis, stance, _now()),
+        )
+        conn.commit()
+
+
+def get_latest_allocation(user_key: str) -> dict | None:
+    with closing(_connect()) as conn:
+        row = conn.execute(
+            "SELECT output_json, synthesis, updated_at FROM allocation_analysis WHERE user_key = ?",
+            (user_key,),
+        ).fetchone()
+    if not row:
+        return None
+    return {"output": json.loads(row[0]), "synthesis": row[1], "updated_at": row[2]}
+
+
+def save_allocation(user_key: str, output: dict, synthesis: str) -> None:
+    with closing(_connect()) as conn:
+        conn.execute(
+            """INSERT INTO allocation_analysis (user_key, output_json, synthesis, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_key) DO UPDATE SET output_json = excluded.output_json,
+            synthesis = excluded.synthesis, updated_at = excluded.updated_at""",
+            (user_key, json.dumps(output), synthesis, _now()),
         )
         conn.commit()

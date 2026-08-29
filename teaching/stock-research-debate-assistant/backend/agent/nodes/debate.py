@@ -13,7 +13,7 @@ loop (not copy-pasted calls) so raising ROUNDS later is a one-line change.
 from __future__ import annotations
 
 from ..llm_client import complete
-from ..state import GraphState
+from ..state import GraphState, emit_progress
 
 ROUNDS = 2
 
@@ -25,11 +25,24 @@ def _format_fetched_data(state: GraphState) -> str:
         pf = data.get("price_fundamentals")
         news = data.get("news")
         chunks.append(f"=== {ticker} ===")
-        chunks.append(f"Price/fundamentals: {pf if pf else '(not fetched / unavailable)'}")
-        chunks.append(f"News: {news.get('raw_results') if news else '(not fetched — question did not require news)'}")
+        if pf:
+            # The optimizer consumes the complete history locally. Do not
+            # duplicate thousands of OHLC rows into every LLM prompt.
+            compact_pf = {key: value for key, value in pf.items() if key != "price_history"}
+            history = pf.get("price_history") or []
+            compact_pf["history_observations"] = len(history)
+            compact_pf["history_start"] = history[0].get("date") if history else None
+            compact_pf["history_end"] = history[-1].get("date") if history else None
+            chunks.append(f"Price/fundamentals: {compact_pf}")
+        else:
+            chunks.append("Price/fundamentals: (not fetched / unavailable)")
+        raw_news = news.get("raw_results", "") if news else "(not fetched — question did not require news)"
+        chunks.append(f"News (bounded context): {raw_news[:8000]}")
     fx = state.get("fx_data")
     if fx:
         chunks.append(f"FX data: {fx}")
+    if state.get("allocation_output"):
+        chunks.append(f"=== DETERMINISTIC ALLOCATION OUTPUT ===\n{state['allocation_output']}")
     return "\n".join(chunks)
 
 
@@ -53,25 +66,36 @@ def run_debate(state: GraphState) -> dict:
     transcript: list[dict] = []
     trail: list[dict] = []
 
-    bull_round1 = _agent_call("bull", "Make the strongest bull case for this stock.", state)
+    subject = "the proposed portfolio allocation" if state.get("allocation_output") else "this stock"
+    emit_progress(state, "debate_bull", "started", "Bull agent is evaluating the evidence")
+    bull_round1 = _agent_call("bull", f"Make the strongest case for accepting {subject}, using only the computed data.", state)
+    emit_progress(state, "debate_bull", "done", "Bull case complete")
     transcript.append({"role": "bull", "round": 1, "content": bull_round1})
     trail.append({"step": "debate_bull", "ticker": None, "status": "done", "detail": bull_round1[:200]})
 
-    bear_round1 = _agent_call("bear", "Make the strongest bear case for this stock.", state)
+    emit_progress(state, "debate_bear", "started", "Bear agent is testing downside and concentration")
+    bear_round1 = _agent_call("bear", f"Make the strongest case against accepting {subject}, focusing on concentration, correlation, and historical risk.", state)
+    emit_progress(state, "debate_bear", "done", "Bear case complete")
     transcript.append({"role": "bear", "round": 1, "content": bear_round1})
     trail.append({"step": "debate_bear", "ticker": None, "status": "done", "detail": bear_round1[:200]})
 
     risk_tolerance = state.get("risk_tolerance") or "not stated"
+    emit_progress(state, "debate_risk", "started", "Risk agent is checking fit and volatility")
     risk_round1 = _agent_call(
         "risk",
         f"Assess how this stock fits an investor with a stated risk tolerance of '{risk_tolerance}'. "
         "Focus on volatility, concentration, and downside scenarios visible in the data.",
         state,
     )
+    emit_progress(state, "debate_risk", "done", "Risk assessment complete")
     transcript.append({"role": "risk", "round": 1, "content": risk_round1})
     trail.append({"step": "debate_risk", "ticker": None, "status": "done", "detail": risk_round1[:200]})
 
-    if ROUNDS >= 2:
+    # Allocation turns already have deterministic weights and metrics to
+    # debate, so one opening round is sufficient and avoids two extra LLM
+    # calls. Milestone 1 stock analysis retains its approved two rounds.
+    rounds = 1 if state.get("allocation_output") else ROUNDS
+    if rounds >= 2:
         bull_rebuttal = _agent_call(
             "bull",
             "Rebut the bear's argument below directly, point by point, still grounded only in the fetched data.",

@@ -10,12 +10,22 @@ error rather than returning a placeholder.
 """
 from __future__ import annotations
 
+import os
+
 from .config import DEFAULT_ANTHROPIC_MODEL, DEFAULT_GROQ_MODEL, DEFAULT_OPENAI_MODEL, config
 from backend.observability import traced_operation
 
 
 class LLMCallError(RuntimeError):
     """Raised when the underlying provider call fails."""
+
+
+def _output_token_budget() -> int:
+    """Keep classroom-demo responses concise and costs bounded."""
+    try:
+        return max(256, min(int(os.environ.get("LLM_MAX_OUTPUT_TOKENS", "1024")), 2048))
+    except ValueError:
+        return 1024
 
 
 def _resolve(provider: str | None, api_key: str | None) -> tuple[str, str]:
@@ -75,7 +85,7 @@ def complete(
                 client = anthropic.Anthropic(api_key=resolved_key)
                 response = client.messages.create(
                     model=model or DEFAULT_ANTHROPIC_MODEL,
-                    max_tokens=1536,
+                    max_tokens=_output_token_budget(),
                     system=system or "",
                     messages=[{"role": "user", "content": prompt}],
                 )
@@ -91,7 +101,9 @@ def complete(
             messages.append({"role": "user", "content": prompt})
             with traced_operation("llm_call", provider=resolved_provider, model=model or DEFAULT_OPENAI_MODEL):
                 response = client.chat.completions.create(
-                    model=model or DEFAULT_OPENAI_MODEL, messages=messages
+                    model=model or DEFAULT_OPENAI_MODEL,
+                    messages=messages,
+                    max_tokens=_output_token_budget(),
                 )
             return response.choices[0].message.content
 
@@ -105,7 +117,9 @@ def complete(
             messages.append({"role": "user", "content": prompt})
             with traced_operation("llm_call", provider=resolved_provider, model=model or DEFAULT_GROQ_MODEL):
                 response = client.chat.completions.create(
-                    model=model or DEFAULT_GROQ_MODEL, messages=messages
+                    model=model or DEFAULT_GROQ_MODEL,
+                    messages=messages,
+                    max_tokens=_output_token_budget(),
                 )
             return response.choices[0].message.content
 

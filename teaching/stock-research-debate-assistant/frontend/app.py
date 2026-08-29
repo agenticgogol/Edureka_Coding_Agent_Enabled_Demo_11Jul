@@ -73,7 +73,7 @@ def backend_request(method, path, **kwargs):
     """Thin wrapper around requests that raises a clear error on failure."""
     url = f"{BACKEND_URL}{path}"
     try:
-        resp = requests.request(method, url, timeout=90, **kwargs)
+        resp = requests.request(method, url, timeout=kwargs.pop("timeout", 90), **kwargs)
     except requests.exceptions.RequestException as exc:
         raise RuntimeError(
             f"Could not reach backend at {url}: {exc}. Is the FastAPI "
@@ -139,6 +139,23 @@ with st.sidebar:
         index=1,
         help="Folded into your message so the risk agent grounds its "
         "assessment in this stated tolerance.",
+    )
+
+    st.divider()
+    allocation_mode = st.checkbox("Allocation mode", value=False)
+    allocation_tickers = st.text_input(
+        "Portfolio tickers",
+        placeholder="AAPL, MSFT, JNJ",
+        help="Optional structured input for allocation questions. You can also provide tickers in chat.",
+    )
+    allocation_amount = st.number_input("Investment amount", min_value=0.0, value=100000.0, step=1000.0)
+    allocation_currency = st.selectbox("Allocation currency", options=["USD", "INR"], index=0)
+    allocation_target = st.number_input(
+        "Target annual return (%) — optional",
+        min_value=0.0,
+        max_value=100.0,
+        value=0.0,
+        step=0.5,
     )
 
     st.divider()
@@ -293,6 +310,50 @@ def render_fundamentals_comparison(detail: dict):
         st.caption(f"(Could not render comparison chart from this event: {exc})")
 
 
+def render_allocation(detail: dict):
+    """Render optimizer-owned weights, amounts, return, risk, and sectors."""
+    if not isinstance(detail, dict):
+        return
+    import pandas as pd
+
+    optimized = detail.get("optimized") or {}
+    equal = detail.get("equal_weight") or {}
+    cols = st.columns(4)
+    cols[0].metric("Historical return", f"{optimized.get('expected_annual_return', 0) * 100:.2f}%")
+    cols[1].metric("Historical volatility", f"{optimized.get('annualized_volatility', 0) * 100:.2f}%")
+    cols[2].metric("Equal-weight return", f"{equal.get('expected_annual_return', 0) * 100:.2f}%")
+    cols[3].metric("Equal-weight volatility", f"{equal.get('annualized_volatility', 0) * 100:.2f}%")
+    optimized_vol = optimized.get("annualized_volatility", 0)
+    equal_vol = equal.get("annualized_volatility", 0)
+    if optimized_vol <= equal_vol:
+        st.info(
+            f"**Takeaway:** The optimized mix had {((equal_vol - optimized_vol) * 100):.2f} percentage points less historical volatility than equal weighting. "
+            "That means smaller typical swings in this historical sample—not guaranteed lower risk going forward."
+        )
+    else:
+        st.warning(
+            "**Takeaway:** Equal weighting had lower historical volatility than the optimized mix in this sample. "
+            "Review the trade-off before using the optimizer result."
+        )
+    allocations = detail.get("allocations") or []
+    if allocations:
+        table = pd.DataFrame(allocations)
+        table["weight"] = table["weight"].map(lambda value: f"{value * 100:.1f}%")
+        table["amount"] = table["amount"].map(lambda value: f"{detail.get('currency', '')} {value:,.2f}")
+        table["historical_return"] = table["historical_return"].map(lambda value: f"{value * 100:.2f}%")
+        table["risk_contribution"] = table["risk_contribution"].map(lambda value: f"{value * 100:.2f}%")
+        st.dataframe(table[["ticker", "weight", "amount", "historical_return", "risk_contribution", "sector"]], hide_index=True, use_container_width=True)
+        st.subheader("Where the money goes")
+        st.caption("Takeaway: taller bars mean more of the investment is assigned to that stock.")
+        st.bar_chart(pd.DataFrame({item["ticker"]: [item["weight"]] for item in allocations}, index=["optimized weight"]))
+    sectors = detail.get("sector_weights") or {}
+    if sectors:
+        st.caption("Sector concentration")
+        largest_sector, largest_weight = max(sectors.items(), key=lambda item: item[1])
+        st.caption(f"Takeaway: {largest_sector} is the largest sector at {largest_weight * 100:.1f}% of the portfolio.")
+        st.bar_chart(pd.DataFrame({key: [value] for key, value in sectors.items()}, index=["portfolio weight"]))
+
+
 def render_stance_banner(step_dict: dict):
     """Render the judge's Buy/Sell/Hold stance as a colored banner, plus
     reasoning and a persistent non-advice disclaimer.
@@ -344,6 +405,8 @@ def render_trail_step(step_dict: dict):
     if step_name in ("fetch_price_fundamentals",) and isinstance(detail, dict):
         render_stat_cards(detail)
         render_price_chart(detail)
+    elif step_name == "portfolio_optimization" and isinstance(detail, dict):
+        render_allocation(detail)
     elif "compar" in step_name and isinstance(detail, dict):
         render_fundamentals_comparison(detail)
         render_stat_cards(detail)
@@ -397,6 +460,8 @@ PROGRESS_LABELS = {
     "fetch_price_fundamentals": "Price & fundamentals",
     "fetch_news": "Recent news",
     "fetch_fx": "Currency conversion",
+    "portfolio_optimization": "Compute optimized weights",
+    "allocation_result": "Allocation result",
     "fundamentals_comparison": "Comparison",
     "debate_bull": "Bull case",
     "debate_bear": "Bear case",
@@ -416,12 +481,20 @@ def render_progress_overview(trail_events: list):
     """Show an at-a-glance status view before the detailed trail."""
     if not trail_events:
         return
-    total = len(trail_events)
-    completed = sum(event.get("status") in {"done", "skipped"} for event in trail_events)
-    failed = sum(event.get("status") == "error" for event in trail_events)
+    latest_by_step = {}
+    order = []
+    for event in trail_events:
+        key = (event.get("step"), event.get("ticker"))
+        if key not in latest_by_step:
+            order.append(key)
+        latest_by_step[key] = event
+    events = [latest_by_step[key] for key in order]
+    total = len(events)
+    completed = sum(event.get("status") in {"done", "skipped"} for event in events)
+    failed = sum(event.get("status") == "error" for event in events)
     st.progress(completed / total, text=f"Agent progress: {completed}/{total} stages complete")
     summary_parts = []
-    for event in trail_events:
+    for event in events:
         status = event.get("status", "unknown")
         icon = {"done": "✅", "skipped": "⏭️", "error": "❌", "started": "🔄"}.get(status, "•")
         label = PROGRESS_LABELS.get(event.get("step"), event.get("step", "Unknown step"))
@@ -429,6 +502,27 @@ def render_progress_overview(trail_events: list):
     st.caption("  ·  ".join(summary_parts))
     if failed:
         st.warning(f"{failed} stage{'s' if failed != 1 else ''} reported an error. See details below.")
+
+
+def run_chat_with_progress(payload: dict, live_container):
+    """Submit a background job and render real graph events as they arrive."""
+    started = backend_request("POST", "/chat/start", json=payload, timeout=15)
+    job_id = started["job_id"]
+    latest_events = []
+    while True:
+        status = backend_request("GET", f"/chat/jobs/{job_id}", timeout=10)
+        latest_events = status.get("events", [])
+        with live_container.container():
+            st.caption("Live agent progress")
+            render_progress_overview(latest_events)
+            if latest_events:
+                latest = latest_events[-1]
+                st.write(f"Current step: **{latest.get('step')}** — {latest.get('detail', '')}")
+        if status["status"] == "complete":
+            return status["response"]
+        if status["status"] == "error":
+            raise RuntimeError(f"Backend chat job failed: {status.get('error')}")
+        time.sleep(0.5)
 
 
 # ---------------------------------------------------------------------------
@@ -494,9 +588,14 @@ with chat_container:
         submitted = st.form_submit_button("Send")
 
     if submitted and user_message.strip():
-        composed_message = (
-            f"[Stated risk tolerance: {risk_tolerance}] {user_message.strip()}"
-        )
+        composed_message = f"[Stated risk tolerance: {risk_tolerance}] {user_message.strip()}"
+        if allocation_mode:
+            target_text = f" target annual return {allocation_target}%" if allocation_target else ""
+            composed_message = (
+                f"[Allocation controls: tickers={allocation_tickers or 'from user message'}, "
+                f"amount={allocation_amount}, currency={allocation_currency}{target_text}] "
+                f"{composed_message}"
+            )
 
         payload = {
             "session_id": st.session_state.session_id,
@@ -509,9 +608,10 @@ with chat_container:
 
         turn_record = {"user_message": user_message.strip(), "response": None, "error": None}
 
-        with st.spinner("Running fan-out + debate + judge pipeline..."):
+        live_progress = st.empty()
+        with st.spinner("Running agent pipeline..."):
             try:
-                response = backend_request("POST", "/chat", json=payload)
+                response = run_chat_with_progress(payload, live_progress)
                 turn_record["response"] = response
                 turn_record["simulate_reveal"] = True
                 memory_note = response.get("memory_note")

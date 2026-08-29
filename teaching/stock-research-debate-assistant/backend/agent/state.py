@@ -17,7 +17,7 @@ Reducers:
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict
 
 TurnType = Literal[
     "new_analysis",
@@ -26,6 +26,11 @@ TurnType = Literal[
     "refinement",
     "topic_switch",
     "comparison",
+    "allocation_new",
+    "allocation_list_change",
+    "allocation_parameter_change",
+    "allocation_compare",
+    "allocation_drill_down",
     "out_of_scope",
 ]
 
@@ -48,6 +53,12 @@ def _merge_dicts(a: dict, b: dict) -> dict:
     return merged
 
 
+def emit_progress(state: "GraphState", step: str, status: str, detail: Any = None, ticker: str | None = None) -> None:
+    callback = state.get("_progress_callback")
+    if callback:
+        callback({"step": step, "ticker": ticker, "status": status, "detail": detail})
+
+
 class TrailEvent(TypedDict, total=False):
     step: str
     ticker: str | None
@@ -68,6 +79,7 @@ class GraphState(TypedDict, total=False):
     provider: str | None
     api_key: str | None
     model: str | None
+    _progress_callback: Any
 
     # Orchestrator output
     turn_type: TurnType
@@ -77,12 +89,18 @@ class GraphState(TypedDict, total=False):
     fx_pair: tuple[str, str] | None
     out_of_scope_reason: str | None
     router_notes: str
+    allocation_requested: bool
+    allocation_amount: float | None
+    allocation_currency: str | None
+    allocation_target_return: float | None
+    allocation_question: str | None
 
     # Task state carried across turns
     fetched_data: Annotated[dict, _merge_dicts]
     fx_data: Annotated[dict, _merge_dicts]
     risk_tolerance: str | None
     refinements: dict
+    allocation_output: dict
 
     # Debate + synthesis
     transcript: Annotated[list[TranscriptTurn], operator.add]

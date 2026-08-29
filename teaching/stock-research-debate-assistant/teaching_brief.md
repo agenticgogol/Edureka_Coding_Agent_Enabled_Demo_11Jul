@@ -114,7 +114,7 @@ n/a (no vector store)
   debate + judge pipeline.
 - Non-goals from architecture design apply as hard constraints: no mutual
   funds, no market timing/price prediction, no options/derivatives/
-  leverage, no portfolio allocation/optimization, no real trading/
+  leverage, no real trading/
   brokerage integration — orchestrator must decline/redirect these, not
   attempt a best-effort answer.
 - UI must render data visually (price trend chart, fundamentals comparison
@@ -154,3 +154,22 @@ investors as the in-story end user.
   installed because DNS access to PyPI is unavailable; rerun the approved
   live scenarios after installing requirements in a network-enabled
   environment)
+
+## Milestone 2 extension
+
+- Scope: approved portfolio allocation and optimization extension.
+- Deterministic owner: `backend/agent/tools/portfolio_optimizer.py` computes
+  historical returns, covariance, long-only minimum-variance weights,
+  equal-weight comparison, risk contributions, and sector concentration.
+- Output requirement: every allocation synthesis shows each ticker's weight
+  and currency amount, overall historical annualized return, annualized
+  volatility, equal-weight comparison, allocation method, and reasoning.
+- Guardrail: weights and metrics never come from the LLM; all figures are
+  explicitly historical and not a forecast or guarantee.
+- Milestone 2 build: complete
+- Milestone 2 verify: blocked in this sandbox (outbound DNS prevents the
+  Anthropic live call and localhost binding is restricted); deterministic
+  optimizer tests pass and the live run must be repeated from the user's
+  terminal.
+- Progress/UI refinement: complete — live backend job events are polled by
+  Streamlit and the completed reasoning trail remains expanded and persistent.
