@@ -1,0 +1,880 @@
+<title>Pipeline Atlas</title>
+<style>
+:root{
+  --paper:#eef1f5; --surface:#ffffff; --surface-2:#e4e9ef;
+  --ink:#182634; --muted:#5c6b7a; --line:#c9d2db;
+  --human:#b5542a; --human-bg:#fbeee4;
+  --auto:#1f7a6c; --auto-bg:#e5f3ef;
+  --llm:#3457a6; --llm-bg:#e9eefb;
+  --file:#6b4fa0; --file-bg:#f1eaf9;
+  --code-bg:#101c2a; --code-ink:#d7e2ee; --focus:#3457a6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0d1420; --surface:#141f2e; --surface-2:#1b2a3c;
+    --ink:#dde5ee; --muted:#8a97a8; --line:#29394c;
+    --human:#e08148; --human-bg:#2c1d14;
+    --auto:#4bbfad; --auto-bg:#12261f;
+    --llm:#7fa0e6; --llm-bg:#141f36;
+    --file:#b79ce0; --file-bg:#241a35;
+    --code-bg:#08111c; --code-ink:#c9d6e4;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0d1420; --surface:#141f2e; --surface-2:#1b2a3c;
+  --ink:#dde5ee; --muted:#8a97a8; --line:#29394c;
+  --human:#e08148; --human-bg:#2c1d14;
+  --auto:#4bbfad; --auto-bg:#12261f;
+  --llm:#7fa0e6; --llm-bg:#141f36;
+  --file:#b79ce0; --file-bg:#241a35;
+  --code-bg:#08111c; --code-ink:#c9d6e4;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;}
+::selection{background:var(--llm-bg);color:var(--ink);}
+a{color:var(--llm);}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+.mono{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;}
+
+/* ---------- tab bar ---------- */
+.tabbar{
+  position:sticky; top:0; z-index:10;
+  display:flex; gap:0.3rem; overflow-x:auto;
+  background:var(--paper);
+  border-bottom:1px solid var(--line);
+  padding:0.9rem 1.5rem 0;
+  scrollbar-width:thin;
+}
+.tabbar::-webkit-scrollbar{height:5px;}
+.tabbar::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.tabbtn{
+  flex:none;
+  appearance:none; border:none; background:none; cursor:pointer;
+  font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;
+  font-weight:600; font-size:0.86rem;
+  color:var(--muted);
+  padding:0.65rem 1.1rem 0.7rem;
+  border-bottom:2.5px solid transparent;
+  white-space:nowrap;
+  display:flex; align-items:center; gap:0.5rem;
+  transition:color .12s ease;
+}
+.tabbtn .idx{
+  font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:0.7rem;
+  color:var(--line); border:1px solid var(--line); border-radius:50%;
+  width:1.35rem; height:1.35rem; display:flex; align-items:center; justify-content:center;
+}
+.tabbtn:hover{ color:var(--ink); }
+.tabbtn[aria-selected="true"]{
+  color:var(--ink);
+  border-bottom-color:var(--llm);
+}
+.tabbtn[aria-selected="true"] .idx{
+  color:var(--llm); border-color:var(--llm);
+}
+
+.tabpanel{ display:none; }
+.tabpanel.active{ display:block; }
+
+.wrap{max-width:940px;margin:0 auto;padding:3.2rem 1.5rem 6rem;}
+header.hero{margin-bottom:3rem;}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--llm);margin:0 0 0.9rem;display:flex;align-items:center;gap:0.6rem;}
+.eyebrow::before{content:"";width:1.5rem;height:1px;background:var(--llm);display:inline-block;}
+h1{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-weight:600;font-size:clamp(1.9rem,5vw,2.7rem);letter-spacing:-0.01em;line-height:1.1;margin:0 0 1.1rem;text-wrap:balance;}
+h1 .cmd{color:var(--muted);font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:0.42em;display:block;margin-top:0.6rem;}
+.dek{max-width:66ch;color:var(--muted);font-size:1.03rem;margin:0;}
+.legend{display:flex;flex-wrap:wrap;gap:0.6rem;margin-top:2rem;padding-top:1.7rem;border-top:1px solid var(--line);}
+.chip{display:inline-flex;align-items:center;gap:0.45rem;font-family:"IBM Plex Mono",monospace;font-size:0.74rem;padding:0.38rem 0.7rem 0.38rem 0.55rem;border-radius:3px;border:1px solid transparent;}
+.chip .dot{width:0.55rem;height:0.55rem;border-radius:50%;flex:none;}
+.chip.human{background:var(--human-bg);color:var(--human);border-color:color-mix(in srgb,var(--human) 35%,transparent);}
+.chip.human .dot{background:var(--human);}
+.chip.auto{background:var(--auto-bg);color:var(--auto);border-color:color-mix(in srgb,var(--auto) 35%,transparent);}
+.chip.auto .dot{background:var(--auto);}
+.chip.llm{background:var(--llm-bg);color:var(--llm);border-color:color-mix(in srgb,var(--llm) 35%,transparent);}
+.chip.llm .dot{background:var(--llm);}
+.chip.money{background:var(--llm-bg);color:var(--llm);border-color:color-mix(in srgb,var(--llm) 35%,transparent);}
+.chip.money .dot{background:var(--llm);}
+.chip.file{background:var(--file-bg);color:var(--file);border-color:color-mix(in srgb,var(--file) 35%,transparent);}
+.chip.file .dot{background:var(--file);border-radius:2px;}
+
+/* spine / stage list (shared) */
+.spine{position:relative;margin-top:3rem;}
+.spine::before{content:"";position:absolute;left:1.85rem;top:0.6rem;bottom:0.6rem;width:2px;background:repeating-linear-gradient(to bottom,var(--line) 0 6px,transparent 6px 11px);}
+@media (max-width:620px){.spine::before{left:1.15rem;}}
+.stage,.phase{position:relative;padding-left:4.6rem;margin-bottom:1.6rem;}
+@media (max-width:620px){.stage,.phase{padding-left:3rem;}}
+.stage:last-child,.phase:last-child{margin-bottom:0;}
+.node,.pnode{position:absolute;left:0.9rem;top:0.15rem;width:1.9rem;height:1.9rem;border-radius:50%;background:var(--surface);border:2px solid var(--llm);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:0.75rem;font-weight:600;color:var(--llm);z-index:1;}
+@media (max-width:620px){.node,.pnode{left:0.2rem;width:1.6rem;height:1.6rem;font-size:0.64rem;}}
+.stage.gate .node,.phase.pause .pnode{border-color:var(--human);color:var(--human);}
+.stage.end .node{border-color:var(--file);color:var(--file);}
+.card,.pcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:1.2rem 1.4rem 1.3rem;}
+.stage-head,.phead{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.3rem;}
+.stage h2,.phase h3,.stage h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-weight:600;font-size:1.12rem;margin:0;letter-spacing:-0.005em;}
+.stage .folder,.stage .skillname,.phead .skillname{font-family:"IBM Plex Mono",monospace;font-size:0.72rem;color:var(--muted);white-space:nowrap;}
+.phead .skillname{color:var(--auto);}
+.stage .lede,.pcard p.desc{color:var(--muted);font-size:0.9rem;margin:0.2rem 0 0.7rem;max-width:64ch;}
+
+.iotable{display:grid;grid-template-columns:auto 1fr;gap:0.4rem 0.9rem;font-size:0.87rem;margin:0.6rem 0 1rem;}
+.iotable dt{font-family:"IBM Plex Mono",monospace;font-size:0.66rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding-top:0.15rem;white-space:nowrap;}
+.iotable dd{margin:0;}
+code{font-family:"IBM Plex Mono",monospace;font-size:0.85em;background:var(--surface-2);padding:0.1rem 0.35rem;border-radius:3px;}
+
+.calls{display:flex;flex-direction:column;gap:0.5rem;margin-top:0.9rem;padding-top:0.9rem;border-top:1px dashed var(--line);}
+.call{display:flex;align-items:flex-start;gap:0.6rem;font-size:0.88rem;}
+.call .tag{flex:none;margin-top:0.1rem;font-family:"IBM Plex Mono",monospace;font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em;padding:0.18rem 0.45rem;border-radius:3px;white-space:nowrap;}
+.call .tag.human{background:var(--human-bg);color:var(--human);}
+.call .tag.auto{background:var(--auto-bg);color:var(--auto);}
+.call .tag.llm{background:var(--llm-bg);color:var(--llm);}
+.call p{margin:0;color:var(--ink);}
+.skillname{font-family:"IBM Plex Mono",monospace;color:var(--auto);}
+
+.substages,.sublist{margin-top:1rem;padding-top:1rem;border-top:1px dashed var(--line);}
+.substages > p.label{font-family:"IBM Plex Mono",monospace;font-size:0.66rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin:0 0 0.6rem;}
+.substage-grid,.fan{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.5rem;}
+.substage,.fan-item{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:0.55rem 0.7rem;font-size:0.78rem;}
+.substage .n,.fan-item .n{font-family:"IBM Plex Mono",monospace;color:var(--llm);font-size:0.66rem;}
+.substage .skillname,.fan-item .skillname{display:block;font-family:"IBM Plex Mono",monospace;font-size:0.72rem;color:var(--ink);margin:0.15rem 0 0.15rem;}
+.substage .out,.fan-item .out{color:var(--muted);font-size:0.72rem;}
+.sublist{display:flex;flex-direction:column;gap:0.4rem;font-size:0.85rem;}
+.sublist .row{display:flex;gap:0.5rem;}
+.sublist .k{font-family:"IBM Plex Mono",monospace;color:var(--auto);flex:none;min-width:1.4rem;}
+
+.orgate{display:flex;align-items:center;gap:0.7rem;margin:0.9rem 0;color:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;}
+.orgate::before,.orgate::after{content:"";height:1px;background:var(--line);flex:1;}
+
+.loopnote{margin-top:0.9rem;display:flex;gap:0.55rem;align-items:flex-start;font-size:0.85rem;background:var(--human-bg);border:1px solid color-mix(in srgb,var(--human) 30%,transparent);color:var(--ink);border-radius:6px;padding:0.7rem 0.9rem;}
+.loopnote .glyph{color:var(--human);font-family:"IBM Plex Mono",monospace;flex:none;}
+
+.folderkey,.afternote,.summary,.contrast,.intro-card{margin-top:3rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:1.5rem 1.6rem 1.7rem;}
+.folderkey h2,.afternote h2,.summary h2,.contrast h2{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-size:1.18rem;margin:0 0 0.4rem;}
+.folderkey p.lede{color:var(--muted);margin:0 0 1.1rem;font-size:0.92rem;max-width:60ch;}
+.afternote p,.contrast p{margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted);}
+.afternote p:last-child,.contrast p:last-child{margin:0;}
+.summary ol{margin:0;padding-left:1.3rem;font-size:0.92rem;}
+.summary li{margin-bottom:0.55rem;}
+.summary li b{color:var(--ink);}
+.summary li .m{color:var(--muted);}
+.intro-card p{margin:0 0 0.6rem;font-size:0.94rem;}
+.intro-card p:last-child{margin:0;}
+
+pre.tree{font-family:"IBM Plex Mono",monospace;font-size:0.8rem;background:var(--code-bg);color:var(--code-ink);padding:1.1rem 1.2rem;border-radius:6px;overflow-x:auto;margin:0;line-height:1.65;}
+pre.tree .dim{opacity:0.55;}
+pre.tree .hi{color:var(--auto);}
+.schema{background:var(--code-bg);color:var(--code-ink);border-radius:6px;padding:1.1rem 1.2rem;font-family:"IBM Plex Mono",monospace;font-size:0.76rem;line-height:1.75;overflow-x:auto;}
+.schema .k{color:#7fa0e6;}
+.schema .c{opacity:0.55;}
+.statebox,.argbox{margin-top:2.2rem;background:var(--code-bg);color:var(--code-ink);border-radius:6px;padding:1.1rem 1.3rem;font-family:"IBM Plex Mono",monospace;font-size:0.78rem;line-height:1.75;overflow-x:auto;}
+.statebox .c,.argbox .c{opacity:0.55;}
+.statebox .k,.argbox .k{color:#4bbfad;}
+
+/* teaching page extras */
+.part{margin-top:3rem;}
+.part-head{display:flex;align-items:baseline;gap:0.8rem;margin-bottom:0.4rem;}
+.part-num{font-family:"IBM Plex Mono",monospace;color:var(--llm);font-size:0.85rem;font-weight:600;}
+.part h2{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-size:1.45rem;font-weight:600;margin:0;letter-spacing:-0.01em;}
+.part .sub{color:var(--muted);max-width:66ch;margin:0.4rem 0 1.4rem;font-size:0.95rem;}
+.plaincard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:1.3rem 1.4rem 1.4rem;margin-bottom:1rem;}
+.plaincard h3{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-size:1.05rem;margin:0 0 0.55rem;}
+.plaincard p{margin:0 0 0.65rem;font-size:0.92rem;}
+.plaincard p:last-child{margin-bottom:0;}
+.steps{counter-reset:step;display:flex;flex-direction:column;gap:0.65rem;}
+.step{position:relative;padding-left:2.6rem;padding-top:0.1rem;}
+.step::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:0;width:1.75rem;height:1.75rem;border-radius:50%;background:var(--human-bg);color:var(--human);border:1.5px solid color-mix(in srgb,var(--human) 45%,transparent);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:0.78rem;font-weight:600;}
+.step h4{margin:0 0 0.2rem;font-size:0.94rem;font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;}
+.step p{margin:0;color:var(--muted);font-size:0.86rem;}
+.branch{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;}
+@media (max-width:640px){.branch{grid-template-columns:1fr;}}
+.branch3{display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;margin-top:0.8rem;}
+@media (max-width:560px){.branch3{grid-template-columns:1fr;}}
+.branch-box{border:1px solid var(--line);border-radius:6px;padding:0.9rem 1rem;background:var(--surface-2);}
+.branch-box h4{margin:0 0 0.35rem;font-size:0.9rem;font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;}
+.branch-box p{margin:0;font-size:0.82rem;color:var(--muted);}
+table.mini{width:100%;border-collapse:collapse;font-size:0.85rem;}
+table.mini th{text-align:left;padding:0.4rem 0.6rem 0.4rem 0;border-bottom:1px solid var(--line);}
+table.mini td{padding:0.5rem 0.6rem 0.5rem 0;border-bottom:1px solid var(--line);color:var(--muted);}
+
+/* eval page extras */
+.tags{display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:0.63rem;text-transform:uppercase;letter-spacing:0.05em;padding:0.16rem 0.42rem;border-radius:3px;}
+.tag.human{background:var(--human-bg);color:var(--human);}
+.tag.money{background:var(--llm-bg);color:var(--llm);}
+.tag.repeat{background:var(--auto-bg);color:var(--auto);}
+.tag.optional{background:var(--surface-2);color:var(--muted);}
+.tag.hard{background:var(--human-bg);color:var(--human);}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.05em;padding:0.14rem 0.4rem;border-radius:3px;margin-right:0.35rem;}
+.pill.hard,.pill.mandatory{background:var(--human-bg);color:var(--human);}
+.pill.skipped{background:var(--surface-2);color:var(--muted);}
+.pill.courtesy{background:var(--llm-bg);color:var(--llm);}
+.invariants{margin-top:3rem;}
+.invariants h2{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-size:1.35rem;margin:0 0 0.4rem;}
+.invariants > p{color:var(--muted);max-width:66ch;margin:0 0 1.3rem;font-size:0.94rem;}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:0.9rem;}
+.inv-card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--human);border-radius:6px;padding:1rem 1.1rem;}
+.inv-card h4{margin:0 0 0.4rem;font-size:0.93rem;font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;}
+.inv-card p{margin:0;font-size:0.83rem;color:var(--muted);}
+.ffnote{margin-top:2.6rem;background:var(--human-bg);border:1px solid color-mix(in srgb,var(--human) 30%,transparent);border-radius:8px;padding:1.3rem 1.5rem;}
+.ffnote h3{margin:0 0 0.5rem;font-size:1rem;font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;color:var(--human);}
+.ffnote p{margin:0 0 0.5rem;font-size:0.89rem;}
+.ffnote p:last-child{margin:0;}
+
+/* run-pipeline extras */
+.modesplit{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem;}
+@media (max-width:640px){.modesplit{grid-template-columns:1fr;}}
+.mode-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:1.1rem 1.25rem;}
+.mode-card h3{margin:0 0 0.4rem;font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;font-size:1.02rem;}
+.mode-card p{margin:0;font-size:0.86rem;color:var(--muted);}
+.mode-card.projects{border-top:3px solid var(--human);}
+.mode-card.concepts{border-top:3px solid var(--auto);}
+
+footer{max-width:940px;margin:3.5rem auto 0;padding:1.5rem 1.5rem 0;border-top:1px solid var(--line);color:var(--muted);font-size:0.85rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;}
+
+@media (prefers-reduced-motion:no-preference){ .tabbtn{ transition:color .12s ease; } }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<nav class="tabbar" role="tablist" aria-label="Pipeline pages">
+  <button class="tabbtn" role="tab" data-tab="onego" aria-selected="true"><span class="idx">1</span>Onego schematic</button>
+  <button class="tabbtn" role="tab" data-tab="teaching" aria-selected="false"><span class="idx">2</span>Teaching brief → build</button>
+  <button class="tabbtn" role="tab" data-tab="eval" aria-selected="false"><span class="idx">3</span>Eval pipeline</button>
+  <button class="tabbtn" role="tab" data-tab="runpipe" aria-selected="false"><span class="idx">4</span>Run pipeline</button>
+  <button class="tabbtn" role="tab" data-tab="fixbug" aria-selected="false"><span class="idx">5</span>Fix bug</button>
+</nav>
+
+<!-- ============================================================ -->
+<!-- TAB 1: onego schematic -->
+<!-- ============================================================ -->
+<section class="tabpanel active" id="tab-onego" role="tabpanel">
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Command internals · one full run</p>
+    <h1>Reading the Onego Pipeline
+      <span class="cmd">/agent_system_design_to_build_onego "&lt;usecase&gt;"</span>
+    </h1>
+    <p class="dek">This command is not a black box — it's seven fixed stages that call the same
+      named skills, subagents, and gated checkpoints you'd invoke by hand, chained in one
+      run. Below is the exact sequence: what triggers each stage, what file or answer it
+      consumes, whether a human has to approve before it continues, and what it writes to
+      disk before handing off to the next stage.</p>
+    <div class="legend" role="list" aria-label="Diagram legend">
+      <span class="chip human" role="listitem"><span class="dot"></span>Human approval required</span>
+      <span class="chip auto" role="listitem"><span class="dot"></span>Skill / subagent call</span>
+      <span class="chip llm" role="listitem"><span class="dot"></span>Claude reasoning (no tool)</span>
+      <span class="chip file" role="listitem"><span class="dot"></span>File written to disk</span>
+    </div>
+  </header>
+
+  <div class="spine">
+    <section class="stage">
+      <div class="node">0</div>
+      <div class="card">
+        <div class="stage-head"><h2>Slug &amp; scope check</h2><span class="folder">teaching/&lt;slug&gt;/</span></div>
+        <p class="lede">Derives the working folder name from the raw usecase text, and checks whether this demo already exists so nothing gets silently overwritten.</p>
+        <dl class="iotable">
+          <dt>Input</dt><dd><code>$ARGUMENTS</code> — the raw usecase sentence typed after the command</dd>
+          <dt>Decision</dt><dd>kebab-case the usecase into <code>&lt;slug&gt;</code>. If <code>teaching/&lt;slug&gt;/teaching_brief.md</code> already exists, stop and ask: resume, revise, or pick a new slug.</dd>
+          <dt>Output</dt><dd><code>teaching/&lt;slug&gt;/</code> created (or reused)</dd>
+        </dl>
+        <div class="calls"><div class="call"><span class="tag llm">reasoning</span><p>Claude derives the slug directly from the sentence — no skill call, no file lookup beyond an existence check.</p></div></div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="node">1</div>
+      <div class="card">
+        <div class="stage-head"><h2>Parse what's already answered</h2></div>
+        <p class="lede">Before asking the user anything, Claude re-reads the usecase sentence and silently sorts everything the next step needs into two buckets.</p>
+        <dl class="iotable">
+          <dt>Input</dt><dd><code>$ARGUMENTS</code></dd>
+          <dt>Decision</dt><dd>Build two lists: <strong>already specified</strong> (stated or clearly implied — a named provider, "no paid APIs", a UI preference) vs. <strong>still open</strong> (everything Step 2's checklist needs that wasn't covered)</dd>
+          <dt>Output</dt><dd>Nothing written yet — this shapes which questions Step 2 actually asks</dd>
+        </dl>
+        <div class="calls"><div class="call"><span class="tag llm">reasoning</span><p>Pure comprehension pass — same discipline as <span class="skillname">write-project-brief</span>, no tool invoked.</p></div></div>
+      </div>
+    </section>
+
+    <section class="stage gate">
+      <div class="node">2</div>
+      <div class="card">
+        <div class="stage-head"><h2>Fixed clarifying checklist</h2></div>
+        <p class="lede">Only the "still open" items surface, batched into one numbered message — each with a concrete recommended default so the user is approving or correcting, not answering from a blank page.</p>
+        <dl class="iotable">
+          <dt>Input</dt><dd>Step 1's "still open" list</dd>
+          <dt>Asks about</dt><dd>problem &amp; user · input shape · output &amp; HITL · tools (checked against free MCP servers first) · frontend · backend/API · memory · provider/model · non-goals</dd>
+          <dt>Output</dt><dd>Answers held in context, feeding Step 3 directly</dd>
+        </dl>
+        <div class="calls"><div class="call"><span class="tag human">human gate</span><p>Every item needs an explicit answer or explicit acceptance of the recommended default — nothing here is inferred silently.</p></div></div>
+        <div class="loopnote"><span class="glyph">2a</span><p>If the user is unsure on any item, Claude offers 2–3 usecase-grounded suggestions and asks one narrower follow-up. A "your call" default is recorded only if the user still declines to choose — never a silent guess.</p></div>
+      </div>
+    </section>
+
+    <section class="stage gate">
+      <div class="node">3</div>
+      <div class="card">
+        <div class="stage-head"><h2>Architecture design</h2><span class="folder">teaching/&lt;slug&gt;/system_design/</span></div>
+        <p class="lede">The user picks the design process; Step 1/2's answers are fed in as pre-answered context so neither path re-asks what's already settled.</p>
+        <dl class="iotable"><dt>Input</dt><dd>Step 2's confirmed answers</dd><dt>Human gate</dt><dd>User chooses <strong>staged</strong> (see all reasoning) or <strong>one-shot</strong> (faster, small/obvious usecase)</dd></dl>
+        <div class="orgate">choose one path</div>
+        <div class="substages">
+          <p class="label">Path A — staged (8 gated stages, each individually approved)</p>
+          <div class="substage-grid">
+            <div class="substage"><span class="n">01</span><span class="skillname">agent-decision-single-vs-multi</span><span class="out">→ 01_agent_topology.md</span></div>
+            <div class="substage"><span class="n">02</span><span class="skillname">agent-decision-design-pattern</span><span class="out">→ 02_design_pattern.md</span></div>
+            <div class="substage"><span class="n">03</span><span class="skillname">agent-decision-runtime-deployment-shape</span><span class="out">→ 03_runtime_deployment_shape.md</span></div>
+            <div class="substage"><span class="n">04</span><span class="skillname">agent-decision-tools-and-authorization</span><span class="out">→ 04_tools_and_authorization.md</span></div>
+            <div class="substage"><span class="n">05</span><span class="skillname">agent-decision-memory</span><span class="out">→ 05_memory.md</span></div>
+            <div class="substage"><span class="n">06</span><span class="skillname">agent-decision-context-engineering</span><span class="out">→ 06_context_engineering.md</span></div>
+            <div class="substage"><span class="n">07</span><span class="skillname">agent-decision-loop-engineering</span><span class="out">→ 07_loop_engineering.md</span></div>
+            <div class="substage"><span class="n">08</span><span class="skillname">agent-decision-eval-security-guardrails</span><span class="out">→ 08_eval_security_guardrails.md</span></div>
+          </div>
+          <div class="calls" style="margin-top:0.9rem;">
+            <div class="call"><span class="tag auto">skill · ×8</span><p>Each stage is its own skill call, and each stops for explicit user approval before the next one runs — the checklist above is not optional shorthand for a single pass.</p></div>
+            <div class="call"><span class="tag auto">skill</span><p><span class="skillname">agent-system-design-assemble</span> stitches all eight approved files into one <code>architecture_design.md</code> — makes no new decisions, pure assembly.</p></div>
+          </div>
+        </div>
+        <div class="orgate">or</div>
+        <div class="substages" style="border-top:none;padding-top:0;">
+          <p class="label">Path B — one-shot</p>
+          <div class="calls"><div class="call"><span class="tag auto">skill</span><p><span class="skillname">agent-architecture-design</span> — a single interview producing <code>teaching/&lt;slug&gt;/architecture_design.md</code> directly, for a small clearly-bounded usecase.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage gate">
+      <div class="node">4</div>
+      <div class="card">
+        <div class="stage-head"><h2>Draft &amp; approve the teaching brief</h2><span class="folder">teaching/&lt;slug&gt;/teaching_brief.md</span></div>
+        <p class="lede">The approved architecture becomes a first draft brief, then goes through its own real confirmation — a pre-filled field is a draft, never treated as consent.</p>
+        <dl class="iotable"><dt>Input</dt><dd>Approved <code>architecture_design.md</code> / <code>system_design/</code> + Step 2's answers</dd></dl>
+        <div class="calls">
+          <div class="call"><span class="tag auto">skill</span><p><span class="skillname">teaching-brief-from-system-design</span> fills Description, Format, draft happy-path test case, Observability, Vector store, Constraints, Audience level — every checkpoint marked <code>pending</code>, not approved.</p></div>
+          <div class="call"><span class="tag auto">skill</span><p><span class="skillname">teaching-brief</span> runs normally from that draft — mostly restating and confirming rather than asking cold, but format, happy-path test, observability, vector store, and "ready to generate" each still need a real explicit approval.</p></div>
+          <div class="call"><span class="tag human">human gate</span><p><span class="skillname">require-api-key</span> makes one real verification call against the chosen provider. Fails → hard stop, exact error reported, nothing proceeds.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage gate">
+      <div class="node">5</div>
+      <div class="card">
+        <div class="stage-head"><h2>Build &amp; verify</h2><span class="folder">teaching/&lt;slug&gt;/</span></div>
+        <p class="lede">Only starts once <code>teaching_brief.md</code>'s "ready to generate?" checkpoint is explicitly approved — this is the step that makes the command "onego" instead of design-then-separately-run-the-pipeline.</p>
+        <div class="calls">
+          <div class="call"><span class="tag auto">skill</span><p><span class="skillname">synthetic-data-generator</span> — only if the brief describes concrete input data (CSV/PDF/transcript) with no real sample supplied. Writes into <code>teaching/&lt;slug&gt;/data/</code>.</p></div>
+          <div class="call"><span class="tag auto">skill</span><p><span class="skillname">teaching-build</span> — builds the progressive notebook/app per the brief's <code>Format</code> field.</p></div>
+          <div class="call"><span class="tag human">human gate</span><p>Before any real LLM call made purely to verify the build, Claude states an approximate call count and cost and waits for explicit go-ahead — earlier-stage approvals don't cover this.</p></div>
+          <div class="call"><span class="tag auto">skill</span><p><span class="skillname">teaching-verify</span> drives every step against the real provider end to end.</p></div>
+        </div>
+        <div class="loopnote"><span class="glyph">↻</span><p>Any failure auto-invokes <span class="skillname">teaching-debug</span> (or <span class="skillname">project-debug</span>) to iterate to a real fix — it does not stop and report the first failure.</p></div>
+      </div>
+    </section>
+
+    <section class="stage end">
+      <div class="node">6</div>
+      <div class="card">
+        <div class="stage-head"><h2>Report</h2></div>
+        <p class="lede">Closes the run with what was decided and what now exists — and where to go next, rather than re-running this same command for small follow-ups.</p>
+        <dl class="iotable">
+          <dt>Summarizes</dt><dd>chosen architecture pattern + design doc location · final <code>teaching_brief.md</code> · what was built · exact run command(s) · provider/model (+ vector store/observability if any) it verified against</dd>
+          <dt>Points to</dt><dd><code>/add-teaching-step &lt;slug&gt;</code> for extending it later, <code>/fix-bug teaching &lt;slug&gt; &lt;description&gt;</code> for a reported bug</dd>
+        </dl>
+        <div class="calls"><div class="call"><span class="tag file">output</span><p>No new skill call — a written summary of everything the previous six stages produced.</p></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="folderkey">
+    <h2>What ends up on disk</h2>
+    <p class="lede">Every artifact from the run lives under one slug folder — this is what the "black box" actually writes, in the order it's written.</p>
+    <pre class="tree">teaching/&lt;slug&gt;/
+├── <span class="hi">system_design/</span>                  <span class="dim"># Step 3, staged path only</span>
+│   ├── 01_agent_topology.md
+│   ├── 02_design_pattern.md
+│   ├── … through 08_eval_security_guardrails.md
+│   └── architecture_design.md      <span class="dim"># assembled, final</span>
+│   <span class="dim">— or, one-shot path —</span>
+├── <span class="hi">architecture_design.md</span>          <span class="dim"># Step 3, one-shot path only</span>
+├── <span class="hi">teaching_brief.md</span>                <span class="dim"># Step 4 — description, format, gates, approvals</span>
+├── <span class="hi">data/</span>                            <span class="dim"># Step 5 — only if synthetic-data-generator ran</span>
+└── <span class="hi">…notebook / app files</span>            <span class="dim"># Step 5 — written by teaching-build</span></pre>
+  </div>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TAB 2: teaching brief -> build -->
+<!-- ============================================================ -->
+<section class="tabpanel" id="tab-teaching" role="tabpanel">
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Skill internals · teaching track</p>
+    <h1>From System Design to a Running Demo</h1>
+    <p class="dek">Three skills, one relay: <span class="skillname">teaching-brief-from-system-design</span>
+      drafts the brief, <span class="skillname">teaching-brief</span> gets it actually approved,
+      and <span class="skillname">teaching-build</span> turns the approved brief into real code.
+      This page explains what each one is, why it exists, and exactly what it does step by step.</p>
+    <div class="legend" role="list" aria-label="legend">
+      <span class="chip human" role="listitem"><span class="dot"></span>Human approval required</span>
+      <span class="chip auto" role="listitem"><span class="dot"></span>Skill / subagent call</span>
+      <span class="chip llm" role="listitem"><span class="dot"></span>Claude reasoning (no tool)</span>
+      <span class="chip file" role="listitem"><span class="dot"></span>File written to disk</span>
+    </div>
+  </header>
+
+  <section class="part">
+    <div class="part-head"><span class="part-num">01</span><h2>teaching-brief-from-system-design — the bridge</h2></div>
+    <p class="sub">The teaching track and the architecture-design track were built independently — one
+      doesn't know the other exists. This skill's whole job is translation: take an <em>already
+      approved</em> architecture design and pre-fill the teaching brief's fields from it, so nothing
+      gets asked twice.</p>
+
+    <div class="plaincard">
+      <h3>What it actually does</h3>
+      <p>It reads the approved <code>architecture_design.md</code> (or the eight <code>system_design/</code>
+        stage files) plus the raw usecase description and requirements answers already gathered upstream,
+        then maps specific sections of the architecture doc onto specific fields of
+        <code>teaching_brief.md</code> — nothing is re-derived from scratch, and nothing is invented if the
+        mapping is genuinely ambiguous (in that case the field is left blank for
+        <span class="skillname">teaching-brief</span> to ask fresh, never guessed).</p>
+      <dl class="iotable">
+        <dt>Input</dt><dd>Approved <code>architecture_design.md</code> / <code>system_design/</code>, plus the usecase description and requirements-checklist answers (problem/user, input, output, tools, frontend, backend, memory, provider, non-goals)</dd>
+        <dt>Output</dt><dd>A <em>draft</em> <code>teaching/&lt;slug&gt;/teaching_brief.md</code> — every checkpoint it fills is marked <code>pending</code>, never <code>approved</code></dd>
+      </dl>
+    </div>
+
+    <div class="plaincard">
+      <h3>The field-by-field mapping</h3>
+      <table class="mini">
+        <thead><tr><th>From architecture doc</th><th>Becomes</th></tr></thead>
+        <tbody>
+          <tr><td>Chosen pattern + rationale</td><td><code>Description</code></td></tr>
+          <tr><td>Pattern + calling command's Frontend/Backend answers</td><td><code>Format</code> (full_app vs. notebook)</td></tr>
+          <tr><td>Evaluation &amp; rollout gates' "ready to ship" scenario</td><td><code>Happy-path test case</code> (draft)</td></tr>
+          <tr><td>Non-functional budgets &amp; overlays</td><td><code>Observability</code> (phoenix / none)</td></tr>
+          <tr><td>Knowledge &amp; state design + tool inventory</td><td><code>Vector store</code> + <code>RAG mode</code></td></tr>
+          <tr><td>Stage 4's tool sourcing (MCP-server hits)</td><td><code>MCP tools</code></td></tr>
+          <tr><td>Tool boundaries + provider answer</td><td><code>Constraints</code> (required env vars)</td></tr>
+          <tr><td>Who the design doc says is affected</td><td><code>Audience level</code></td></tr>
+        </tbody>
+      </table>
+      <div class="calls"><div class="call"><span class="tag human">boundary</span><p>This skill never marks a checkpoint approved — drafting isn't consent. It hands off to <span class="skillname">teaching-brief</span>, reporting which fields were pre-filled vs. left blank for a fresh ask.</p></div></div>
+    </div>
+  </section>
+
+  <section class="part">
+    <div class="part-head"><span class="part-num">02</span><h2>teaching-brief — what it really is</h2></div>
+    <p class="sub">The <strong>teaching brief is the contract</strong> everything downstream builds against —
+      one living Markdown file, <code>teaching/&lt;slug&gt;/teaching_brief.md</code>, that records every
+      decision plus whether a human actually approved it. Nothing in <span class="skillname">teaching-build</span>
+      runs until every checkpoint in this file reads <code>approved</code>, not just <code>pending</code>.</p>
+
+    <div class="plaincard">
+      <h3>Nine checkpoints, each a real stop</h3>
+      <div class="steps">
+        <div class="step"><h4>Project description</h4><p>Freeform, from the user. If a brief already exists, resume from the first unapproved checkpoint instead of re-asking.</p></div>
+        <div class="step"><h4>Parse &amp; clarify gaps</h4><p>Silently split into "already answered" (restate for confirmation) vs. "genuinely open" (ask, with a recommended default).</p></div>
+        <div class="step"><h4>Format</h4><p>Notebook/progressive script, or full Streamlit + FastAPI app. This single answer decides which half of <span class="skillname">teaching-build</span> runs later.</p></div>
+        <div class="step"><h4>Happy-path test case</h4><p>One end-user scenario in plain language — what they'd click, what they'd see. Requires explicit approval or correction.</p></div>
+        <div class="step"><h4>.env / API key</h4><p>User confirms the key is set, but <span class="skillname">require-api-key</span> still runs a real verification call regardless — a "yes" is not itself proof.</p></div>
+        <div class="step"><h4>Observability</h4><p>Phoenix tracing wired in, or skipped for this demo.</p></div>
+        <div class="step"><h4>Vector store &amp; RAG mode</h4><p>ChromaDB / FAISS / Qdrant Cloud / none — and if a store is chosen, whether retrieval is a single fixed step or an agentic loop that decides/grades/retries.</p></div>
+        <div class="step"><h4>External tools (MCP-first)</h4><p>For any needed capability, a live lookup checks for a free public MCP server before ever assuming custom tool code — and recommends it by default when found.</p></div>
+        <div class="step"><h4>Ready to generate?</h4><p>Everything is summarized in one block. Only an explicit "yes" here releases control to <span class="skillname">teaching-build</span>.</p></div>
+      </div>
+    </div>
+
+    <div class="plaincard">
+      <h3>The brief file's shape</h3>
+      <p>Every field below lives in <code>teaching/&lt;slug&gt;/teaching_brief.md</code>, and the
+        <code>## Checkpoint status</code> block is the actual gate — <span class="skillname">teaching-build</span>
+        reads this file, not the conversation history, to know what it's allowed to do.</p>
+      <div class="schema">## Description<br>## Steps <span class="c">(a, b, c… each building on the last)</span><br><span class="k">## Format</span>          notebook | full_app<br><span class="k">## Happy-path test case</span>  <span class="c">(user-approved)</span><br><span class="k">## Observability</span>   phoenix | none<br><span class="k">## Vector store</span>    chromadb | faiss | qdrant | none<br><span class="k">## RAG mode</span>        fixed | agentic | n/a<br><span class="k">## Agentic RAG capabilities</span>  <span class="c">core + confirmed optional set</span><br><span class="k">## MCP tools</span>       <span class="c">server name(s), or none/declined</span><br><span class="k">## Constraints</span>     <span class="c">required env vars</span><br><span class="k">## Audience level</span><br><span class="k">## Decisions</span>       <span class="c">"your call" answers, never re-asked</span><br>## Checkpoint status<br>&nbsp;&nbsp;- Format: <span style="color:#4bbfad;">approved</span> | pending<br>&nbsp;&nbsp;- Ready to generate: <span style="color:#4bbfad;">approved</span> | pending<br>&nbsp;&nbsp;- Build: complete | pending</div>
+    </div>
+  </section>
+
+  <section class="part">
+    <div class="part-head"><span class="part-num">03</span><h2>teaching-build — how the code actually gets written</h2></div>
+    <p class="sub">This is the one skill that turns an approved brief into runnable files. It reads
+      <code>## Format</code> first and follows one of two entirely different procedures.</p>
+
+    <div class="plaincard">
+      <h3>Step 0 — read the Format field, branch immediately</h3>
+      <p><code>notebook</code> and <code>full_app</code> are not two flavors of the same steps — they're
+        genuinely different builds, and this skill refuses to build a notebook when the brief says
+        <code>full_app</code>, or vice versa.</p>
+    </div>
+
+    <div class="plaincard">
+      <h3>Path A — notebook / small script</h3>
+      <p>Creates <code>teaching/&lt;slug&gt;/notebook.ipynb</code>. For every step in the brief's
+        <code>## Steps</code> list, in order:</p>
+      <dl class="iotable">
+        <dt>Cell 1</dt><dd>Markdown — what this step adds and why, 2–4 sentences</dd>
+        <dt>Cell 2</dt><dd>Code — previous step's code <em>plus</em> this step's addition, clearly delineated, runnable on its own once prior cells have run</dd>
+        <dt>Cell 3</dt><dd>Output showing it actually working — a printed response, tool-call trace, or retrieved chunks</dd>
+      </dl>
+      <div class="calls">
+        <div class="call"><span class="tag auto">skill</span><p><span class="skillname">helper-utils</span> — reused across every step once the sequence is non-trivial (e.g. a 5-step demo), so step (a)'s client setup carries forward.</p></div>
+        <div class="call"><span class="tag auto">skill</span><p><span class="skillname">agent-mcp-real</span> (Mode B) — if <code>## MCP tools</code> names a server, the tool-calling step connects to that real server process rather than a hand-written function.</p></div>
+        <div class="call"><span class="tag auto">skill</span><p><span class="skillname">synthetic-data-generator</span> — only if invoked standalone and <code>data/</code> is missing something a step needs; normally the calling pipeline already ran this before <span class="skillname">teaching-build</span> starts.</p></div>
+        <div class="call"><span class="tag auto">skill</span><p><span class="skillname">agent-agentic-rag</span> — only if <code>## RAG mode</code> is <code>agentic</code>; builds the decide/retrieve/grade/rewrite loop instead of one fixed retrieval call, and shows each round printed live.</p></div>
+        <div class="call"><span class="tag human">boundary</span><p>No mock mode, ever — every step calls the real provider that <span class="skillname">require-api-key</span> already verified before this skill started.</p></div>
+      </div>
+    </div>
+
+    <div class="plaincard">
+      <h3>Path B — full_app (Streamlit + FastAPI)</h3>
+      <p>A lighter version of the full <code>projects/</code> build chain — real code, real provider
+        calls, still no mock mode, but it skips the shippable-project ceremony
+        (<code>lint-and-typecheck</code>, <code>validate-env</code>, a formal <code>plan.md</code>).</p>
+
+      <h3 style="margin-top:1.2rem;">Step 0 of this path — inline or delegated? Always asked, never assumed</h3>
+      <p>Complexity is evaluated from what's <em>actually in scope for this build call</em> — step
+        count, whether a vector store or observability is wired, existing code size if appending.
+        Claude states its recommendation and reasoning, then <strong>waits for the user to choose.</strong></p>
+      <div class="branch">
+        <div class="branch-box"><h4>Inline</h4><p>Low complexity — 1–2 steps, no vector store, no observability. Claude builds it directly in this conversation, steps 1–7 below.</p></div>
+        <div class="branch-box"><h4>Delegated</h4><p>Higher complexity — 3+ steps, or store + observability both wired. <span class="skillname">backend-builder</span> and <span class="skillname">frontend-builder</span> run as separate subagents against the brief (standing in for <code>design.md</code>), then <span class="skillname">integrator</span> reconciles them.</p></div>
+      </div>
+
+      <div class="substage-grid" style="margin-top:1.2rem;">
+        <div class="substage"><span class="n">1</span><span class="skillname">helper-utils</span><span class="out">config.py / llm_client.py into backend/</span></div>
+        <div class="substage"><span class="n">2</span><span class="skillname">vector-store</span><span class="out">only if Vector store ≠ none</span></div>
+        <div class="substage"><span class="n">2a</span><span class="skillname">agent-mcp-real</span><span class="out">only if MCP tools names a server</span></div>
+        <div class="substage"><span class="n">3</span><span class="skillname">backend-fastapi</span><span class="out">one endpoint per brief step</span></div>
+        <div class="substage"><span class="n">4</span><span class="skillname">frontend-streamlit</span><span class="out">exercises the happy-path scenario</span></div>
+        <div class="substage"><span class="n">5</span><span class="skillname">eval-and-observability</span><span class="out">tracing only, if Observability = phoenix</span></div>
+        <div class="substage"><span class="n">6</span>manual contract check<span class="out">frontend calls match backend routes</span></div>
+        <div class="substage"><span class="n">7</span>record run command<span class="out">→ teaching/&lt;slug&gt;/README.md</span></div>
+      </div>
+      <div class="loopnote"><span class="glyph">note</span><p>If <code>## RAG mode</code> is <code>agentic</code>, step 2 also runs <span class="skillname">agent-agentic-rag</span> on top of the vector store, wiring only the capabilities the brief actually confirmed — and subagent summaries are treated as intent, not fact, so the manual contract check in step 6 still happens even after delegated builders report back.</p></div>
+    </div>
+  </section>
+
+  <div class="summary">
+    <h2>The whole relay, in one paragraph</h2>
+    <ol>
+      <li><b>teaching-brief-from-system-design</b> reads an already-approved architecture design and drafts <code>teaching_brief.md</code> — every field <span class="m">pending</span>, nothing assumed approved.</li>
+      <li><b>teaching-brief</b> walks through nine checkpoints for real, mostly confirming the draft rather than asking cold — but format, happy-path, API key, observability, vector store, and "ready to generate" all need a genuine yes.</li>
+      <li><b>teaching-build</b> reads <code>## Format</code>, branches into notebook or full_app, and — for full_app — asks whether to build inline or delegate to subagents before writing a single line of code.</li>
+      <li>Only after that does <span class="m">teaching-verify</span> (outside this page's scope) drive the result end to end against the real provider.</li>
+    </ol>
+  </div>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TAB 3: eval pipeline -->
+<!-- ============================================================ -->
+<section class="tabpanel" id="tab-eval" role="tabpanel">
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Command internals · eval track</p>
+    <h1>How an Agent Gets Evaluated
+      <span class="cmd">/eval-run-pipeline-new [project-folder] [fast-forward] [through-cost-optimize]</span>
+    </h1>
+    <p class="dek">This command doesn't run its own evaluation logic — it's a <strong>continuity
+      layer</strong> over nine phases, each owned by its own skill, each with its own review or
+      cost-approval pause that this command is explicitly forbidden from skipping. The point of
+      the command is to never make you re-type the next slash command; the point of the phases is
+      grounded-theory rigor — nothing gets measured until a human has actually looked at real
+      traces first.</p>
+    <div class="legend" role="list" aria-label="legend">
+      <span class="chip human" role="listitem"><span class="dot"></span>Human pause / approval</span>
+      <span class="chip auto" role="listitem"><span class="dot"></span>Skill call</span>
+      <span class="chip money" role="listitem"><span class="dot"></span>Real-API cost approval</span>
+      <span class="chip file" role="listitem"><span class="dot"></span>File / artifact produced</span>
+    </div>
+  </header>
+
+  <div class="intro-card">
+    <p><strong>Step 0 — resolve the folder.</strong> The first token in the arguments (unless it's
+      <code>fast-forward</code>/<code>through-cost-optimize</code>) names the project being evaluated,
+      e.g. <code>teaching/incident-root-cause-agent</code>. If none is given, the command asks — it
+      never guesses from the current directory.</p>
+    <p><strong>Step 1 — check where this project already is.</strong> Before running anything, it
+      invokes <span class="mono" style="color:var(--auto);">eval-loop</span> to read the pipeline's
+      state file and cross-check it against the real files on disk. A re-run of this command on the
+      same project resumes from the first incomplete phase — it never restarts from phase 0 on a
+      project with existing progress.</p>
+  </div>
+
+  <div class="spine">
+    <div class="phase">
+      <div class="pnode">0</div>
+      <div class="pcard"><div class="phead"><h3>Entrypoint &amp; spec</h3><span class="skillname">eval-init-new</span></div>
+        <p class="desc">Detects how the agent under test is actually invoked, then interviews to produce <code>spec.md</code> — the ground-truth description everything else measures against.</p></div>
+    </div>
+    <div class="phase pause">
+      <div class="pnode">1</div>
+      <div class="pcard"><div class="phead"><h3>Dataset generation</h3><span class="skillname">eval-dataset-new</span></div>
+        <p class="desc">Generates the traces the whole eval will run against.</p>
+        <div class="tags"><span class="tag money">real-API cost approval</span></div></div>
+    </div>
+    <div class="phase pause">
+      <div class="pnode">2</div>
+      <div class="pcard"><div class="phead"><h3>Open coding</h3><span class="skillname">open-codin-new</span></div>
+        <p class="desc">A human reads real traces and notes what actually went wrong, trace by trace. This is the load-bearing step of the whole methodology — it <strong>cannot be automated away</strong>. The command drives the batch loop and asks the required question per trace, but it cannot supply the judgment itself.</p>
+        <div class="tags"><span class="tag human">cannot be skipped, ever</span></div></div>
+    </div>
+    <div class="phase pause">
+      <div class="pnode">3</div>
+      <div class="pcard"><div class="phead"><h3>Axial coding</h3><span class="skillname">axial-coding-new</span></div>
+        <p class="desc">Synthesizes the individual open codes from phase 2 into a taxonomy of failure-mode clusters — approve, merge, split, or reject each proposed cluster.</p>
+        <div class="tags"><span class="tag human">explicit cluster approval</span></div></div>
+    </div>
+    <div class="phase">
+      <div class="pnode">4</div>
+      <div class="pcard"><div class="phead"><h3>Evaluator design</h3><span class="skillname">evaluator-design-new</span></div>
+        <p class="desc">For every failure mode in the taxonomy, decides: checkable by code (a script/assertion), or does it need an LLM judge? Mostly mechanical, but the routing table is still reported before moving on.</p></div>
+    </div>
+    <div class="phase">
+      <div class="pnode">5</div>
+      <div class="pcard"><div class="phead"><h3>Judge construction</h3><span class="skillname">judge-split-new</span> → <span class="skillname">judge-builder-new</span></div>
+        <p class="desc">Repeated once <em>per</em> failure mode routed to <code>method: judge</code> in the routing config: split the data first, then build that judge's prompt (few-shot curation + pinning the exact judge model id). Skipped entirely if nothing was routed to judge.</p>
+        <div class="tags"><span class="tag repeat">repeats per judge-routed failure mode</span></div></div>
+    </div>
+    <div class="phase pause">
+      <div class="pnode">6</div>
+      <div class="pcard"><div class="phead"><h3>Judge alignment</h3><span class="skillname">judge-align-new</span></div>
+        <p class="desc">Calibrates each judge against real human labels — computes Cohen's kappa, and only after an explicit "yes, run final validation" (never inferred, never satisfied by silence or by re-running this command) does it read the locked held-out split.</p>
+        <div class="tags"><span class="tag repeat">repeats per judge-routed failure mode</span><span class="tag human">kappa gate + explicit held-out-read consent</span><span class="tag money">real-API cost approval</span></div></div>
+    </div>
+    <div class="phase">
+      <div class="pnode">7</div>
+      <div class="pcard"><div class="phead"><h3>CI wiring</h3><span class="skillname">eval-ci-new</span></div>
+        <p class="desc">Wires the calibrated judges into CI, reading each judge's pinned model id from its own frontmatter — no separate question needed here. This is the default stopping point.</p></div>
+    </div>
+    <div class="phase pause">
+      <div class="pnode">8</div>
+      <div class="pcard"><div class="phead"><h3>Cost optimization</h3><span class="skillname">cost-optimize-new</span></div>
+        <p class="desc">Only runs if <code>through-cost-optimize</code> was passed, and only if the failure backlog has zero open high-severity items — the same gate <span class="mono" style="color:var(--auto);">eval-loop</span> enforces elsewhere. If unmet, the command stops here and reports it rather than running anyway.</p>
+        <div class="tags"><span class="tag optional">opt-in via argument</span><span class="tag human">gated on clean backlog</span></div></div>
+    </div>
+  </div>
+
+  <section class="invariants">
+    <h2>Three rules that hold across every phase</h2>
+    <p>These aren't phase-specific — they're enforced by this repo's <code>CLAUDE.md</code> and apply
+      to every skill in the eval suite, not just the ones that mention them locally.</p>
+    <div class="inv-grid">
+      <div class="inv-card"><h4>No metrics before error analysis</h4><p>A judge or metric can't exist for a failure mode that wasn't derived from real open/axial coding (phases 2–3). An invented category measures nothing real.</p></div>
+      <div class="inv-card"><h4>No statistics computed by the model</h4><p>Kappa, TPR/TNR, bias correction, bootstrap CIs, stratified splitting all live in exactly one place — <code>evallib/stats.py</code>. No skill re-derives the formula inline.</p></div>
+      <div class="inv-card"><h4>No held-out reads during iteration</h4><p>The locked held-out split is read exactly once per calibration cycle, at explicit user confirmation, with a dedicated environment flag set for that call — enforced mechanically by a hook, not just instruction.</p></div>
+    </div>
+  </section>
+
+  <div class="ffnote">
+    <h3>What "fast-forward" actually changes</h3>
+    <p>Without it, every pause above stops and waits — exactly as if you'd run each skill by hand.</p>
+    <p>With it, Claude may proceed through <em>judgment-call</em> pauses using a skill's own stated
+      default (e.g. hint-mode off, primary annotator = first labeler) — and must log every such
+      assumption plainly in the final report.</p>
+    <p><strong>Never skipped, fast-forward or not:</strong> real-money cost approvals, and the
+      explicit "yes" before reading the locked held-out split. Those always require the user.</p>
+  </div>
+
+  <div class="statebox">
+$ /eval-run-pipeline-new teaching/incident-root-cause-agent<br>
+<span class="c">→ reads the pipeline state file</span><br>
+<span class="c">→ resumes at first incomplete phase, e.g.:</span><br>
+<span class="k">phase 4 evaluator-design-new</span>  ... <span class="c">routing table reported</span><br>
+<span class="k">phase 5 judge-split-new + judge-builder-new</span> × <span class="c">2 judge-routed modes</span><br>
+<span class="k">phase 6 judge-align-new</span>  ... <span class="c">STOP: kappa gate, awaiting real approval</span>
+  </div>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TAB 4: run pipeline -->
+<!-- ============================================================ -->
+<section class="tabpanel" id="tab-runpipe" role="tabpanel">
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow">Command internals · full pipeline</p>
+    <h1>Brief to Verified App
+      <span class="cmd">/run-pipeline &lt;projects|concepts&gt; &lt;slug&gt;</span>
+    </h1>
+    <p class="dek">This is the longest-running command in the repo — fourteen stages from a
+      confirmed brief to a verified, reviewed app, each one a named skill or subagent. Precondition:
+      <code>&lt;kind&gt;/&lt;slug&gt;/project_brief.md</code> (or <code>concept_brief.md</code>) must
+      already exist — this command never drafts the brief itself.</p>
+    <div class="legend" role="list" aria-label="legend">
+      <span class="chip human" role="listitem"><span class="dot"></span>Hard stop / mandatory gate</span>
+      <span class="chip auto" role="listitem"><span class="dot"></span>Skill / subagent call</span>
+      <span class="chip file" role="listitem"><span class="dot"></span>File produced</span>
+    </div>
+  </header>
+
+  <div class="modesplit">
+    <div class="mode-card projects"><h3>kind = projects</h3><p>Gets the full 14 stages, including the mandatory Stage 1b architecture design — a real single-vs-multi decision, design-pattern decision, and MCP-first tool sourcing before <code>design.md</code> exists.</p></div>
+    <div class="mode-card concepts"><h3>kind = concepts</h3><p>Skips Stage 1b entirely — concepts are notebook-scale, atomic, single-thing demos by definition, so they get <code>technical-design</code>'s lightweight Agentic-RAG/MCP detection instead of a full topology pass.</p></div>
+  </div>
+
+  <div class="spine">
+    <section class="stage gate"><div class="node">1</div><div class="card"><div class="stage-head"><h2>Clarify</h2><span class="skillname">clarify-requirements</span></div><p class="lede">Or spawns <span class="skillname">requirements-clarifier</span>. <span class="pill hard">stop &amp; wait</span> if any open question exists — never proceeds on assumptions.</p></div></section>
+    <section class="stage gate"><div class="node">1a</div><div class="card"><div class="stage-head"><h2>Require API key</h2><span class="skillname">require-api-key</span></div><p class="lede"><span class="pill hard">hard stop</span> No provider key, or the configured one fails a real verification call → nothing past this point runs. No mock mode anywhere in this repo.</p></div></section>
+    <section class="stage gate"><div class="node">1b</div><div class="card"><div class="stage-head"><h2>Architecture design</h2></div><p class="lede"><span class="pill mandatory">mandatory for projects</span><span class="pill skipped">skipped for concepts</span> If an approved design already exists, reused directly — otherwise the user picks staged vs. one-shot, same choice as the teaching-track's onego command.</p>
+      <div class="sublist">
+        <div class="row"><span class="k">a</span><span>User chooses <strong>staged</strong> (<span class="skillname">agent-system-design</span>, 8 gated stages) or <strong>one-shot</strong> (<span class="skillname">agent-architecture-design</span>). Stage 1's clarified answers feed in as pre-answered context.</span></div>
+        <div class="row"><span class="k">b</span><span>Runs to completion with real explicit approval at every step — single-vs-multi, design pattern, tool sourcing (MCP-first) all get decided here, never inferred.</span></div>
+      </div>
+    </div></section>
+    <section class="stage gate"><div class="node">2</div><div class="card"><div class="stage-head"><h2>Design</h2><span class="skillname">technical-design</span></div><p class="lede">Or spawns <span class="skillname">planner</span>. If Stage 1b produced an architecture design, its decisions map straight into <code>design.md</code> instead of being re-derived. For <code>projects/</code>, explicitly asks notebook prototype vs. full frontend+backend app. <span class="pill courtesy">courtesy pause</span> — briefly shown to the user, not a hard stop.</p></div></section>
+    <section class="stage gate"><div class="node">3</div><div class="card"><div class="stage-head"><h2>Draft &amp; confirm tests</h2><span class="skillname">write-and-validate-tests</span></div><p class="lede"><span class="pill hard">stop &amp; wait</span> for explicit confirmation the plain-language test list matches intent — same weight as the Clarify gate; silence or a vague reply doesn't count.</p></div></section>
+    <section class="stage"><div class="node">4</div><div class="card"><div class="stage-head"><h2>Plan</h2><span class="skillname">make-plan</span></div><p class="lede">Produces <code>plan.md</code> from the template — always includes <span class="skillname">run-tests</span>, conditionally <span class="skillname">security-check</span> / <span class="skillname">eval-and-observability</span> depending on what Stage 2's design actually needs.</p></div></section>
+    <section class="stage"><div class="node">5</div><div class="card"><div class="stage-head"><h2>Build</h2></div><p class="lede">Each sub-step commits its own tests as it goes — the largest fan-out in the pipeline.</p>
+      <div class="fan">
+        <div class="fan-item"><span class="n">a</span><span class="skillname">setup-venv</span><span class="skillname">pick-requirements</span></div>
+        <div class="fan-item"><span class="n">b</span><span class="skillname">helper-utils</span><span class="out">from _shared/</span></div>
+        <div class="fan-item"><span class="n">b1</span><span class="skillname">synthetic-data-generator</span><span class="out">only if a data shape is described with no real sample</span></div>
+        <div class="fan-item"><span class="n">c</span><span class="skillname">backend-fastapi</span><span class="out">if applicable</span></div>
+        <div class="fan-item"><span class="n">d</span>agent skill matching design.md<span class="out">langgraph / crewai / dspy / mcp-real / graphrag / agentic-rag</span></div>
+        <div class="fan-item"><span class="n">e</span><span class="skillname">frontend-nextjs</span> / <span class="skillname">frontend-streamlit</span> / <span class="skillname">notebook-concept</span></div>
+      </div>
+      <div class="loopnote"><span class="glyph">note</span><p>Step d: anything other than LangGraph or Agentic RAG gets <span class="skillname">research-first</span> + a standalone spike before wiring in — those two are the well-covered exemption, everything else (CrewAI, DSPy, real MCP, GraphRAG) is treated as thinner training-data territory.</p></div>
+    </div></section>
+    <section class="stage gate"><div class="node">6</div><div class="card"><div class="stage-head"><h2>Full test gate</h2><span class="skillname">run-tests</span></div><p class="lede">Real captured pass/fail output. <span class="pill hard">no pass, no continue</span> — a failure invokes <span class="skillname">project-debug</span> to reproduce/diagnose/fix and re-run before this stage is considered complete.</p></div></section>
+    <section class="stage"><div class="node">7</div><div class="card"><div class="stage-head"><h2>Security</h2><span class="skillname">security-check</span></div><p class="lede">Only if the design involves tool calling, DB access, or untrusted-content ingestion.</p></div></section>
+    <section class="stage"><div class="node">8</div><div class="card"><div class="stage-head"><h2>Eval / observability</h2><span class="skillname">eval-and-observability</span></div><p class="lede">Only if the design involves RAG or makes a quality/reliability claim.</p></div></section>
+    <section class="stage"><div class="node">9</div><div class="card"><div class="stage-head"><h2>Static checks</h2><span class="skillname">lint-and-typecheck</span></div><p class="lede">All reported issues get fixed here — not left for the runtime smoke test to find.</p></div></section>
+    <section class="stage gate"><div class="node">10</div><div class="card"><div class="stage-head"><h2>Env audit</h2><span class="skillname">validate-env</span></div><p class="lede">Actually unsets the required key and confirms it fails loudly and immediately — never assumed, always tested. No mock/degraded fallback is allowed to run instead.</p></div></section>
+    <section class="stage"><div class="node">11</div><div class="card"><div class="stage-head"><h2>Integrate</h2><span class="skillname">integrate-and-assemble</span></div><p class="lede">Reconciles every piece the Build stage produced into one single run command.</p></div></section>
+    <section class="stage gate"><div class="node">12</div><div class="card"><div class="stage-head"><h2>Verify</h2><span class="skillname">run-and-verify</span></div><p class="lede">Installs fresh, launches via the single run command, drives one real end-to-end request. <span class="pill hard">not done until this passes</span> — failure invokes <span class="skillname">project-debug</span> to fix and re-run.</p></div></section>
+    <section class="stage"><div class="node">13</div><div class="card"><div class="stage-head"><h2>Review</h2><span class="skillname">reviewer</span></div><p class="lede">Spawned (or run inline): confirms the result matches <code>project_brief.md</code>'s Definition of Done, flags any scope drift.</p></div></section>
+    <section class="stage"><div class="node">14</div><div class="card"><div class="stage-head"><h2>Deploy config</h2><span class="skillname">deploy-config</span></div><p class="lede">Only if the brief explicitly requires deployment.</p></div></section>
+  </div>
+
+  <div class="afternote">
+    <h2>On failure, and after completion</h2>
+    <p><strong>Any stage failing:</strong> stop, report the real error output (not a summary), fix
+      it, and re-run that stage <em>and</em> any stage whose output it invalidates — a fix during
+      integration means re-running the test gate and verify too, not just continuing forward. No
+      stage is ever marked complete while it's actually failing.</p>
+    <p><strong>On completion:</strong> <code>python scripts/validate_coding_agent_demo.py</code> runs,
+      and the final report covers what was built, the one run command, and the confirmed
+      end-to-end result from Stage 12.</p>
+    <p><strong>Later bug reports</strong> (after Stage 12 already passed once) go through
+      <code>/fix-bug &lt;kind&gt; &lt;slug&gt; &lt;description&gt;</code> instead of a full
+      re-run of this pipeline.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TAB 5: fix bug -->
+<!-- ============================================================ -->
+<section class="tabpanel" id="tab-fixbug" role="tabpanel">
+<div class="wrap" style="max-width:820px;">
+  <header class="hero">
+    <p class="eyebrow">Command internals · post-ship fix</p>
+    <h1>Fixing a Reported Bug
+      <span class="cmd">/fix-bug &lt;projects|concepts|teaching&gt; &lt;slug&gt; &lt;bug description&gt;</span>
+    </h1>
+    <p class="dek">The short command in this repo — four stages, no design work, no rebuild from
+      scratch. It exists specifically for the case where <code>run-and-verify</code> (or
+      <code>teaching-verify</code>) already passed once, and something broke after that. It is
+      <strong>not</strong> for a first build — that's what <code>/run-pipeline</code> or
+      <code>/run-teaching-pipeline</code> are for.</p>
+    <div class="legend" role="list" aria-label="legend">
+      <span class="chip human" role="listitem"><span class="dot"></span>Human input required</span>
+      <span class="chip auto" role="listitem"><span class="dot"></span>Skill call</span>
+      <span class="chip file" role="listitem"><span class="dot"></span>File updated</span>
+    </div>
+  </header>
+
+  <div class="argbox">
+$ /fix-bug teaching incident-root-cause-agent <span class="c">"the chat UI hangs after the third message"</span><br>
+<span class="k">kind</span> = teaching &nbsp; <span class="k">slug</span> = incident-root-cause-agent<br>
+<span class="k">bug description</span> = everything after the slug, verbatim in the user's own words
+  </div>
+
+  <div class="spine" style="margin-top:2.2rem;">
+    <section class="stage gate"><div class="node">1</div><div class="card">
+      <h3>Confirm the unit was actually built</h3>
+      <p class="lede" style="margin-top:0.3rem;">Checked before anything else runs:</p>
+      <p style="font-size:0.9rem;"><code>projects</code> / <code>concepts</code> → <code>plan.md</code> must exist.<br>
+         <code>teaching</code> → <code>teaching_brief.md</code> must exist <em>and</em> have been through <span class="skillname">teaching-build</span> at least once (real notebook / app.py / backend+frontend files present).</p>
+      <p style="font-size:0.9rem;">If not: told plainly this unit hasn't been built yet, and stops — there is nothing to debug.</p>
+    </div></section>
+
+    <section class="stage gate"><div class="node">2</div><div class="card">
+      <h3>Get a real reproduction</h3>
+      <p class="lede" style="margin-top:0.3rem;">A vague report ("it doesn't work," "chat is broken") is not enough to act on.</p>
+      <p style="font-size:0.9rem;">Claude asks for the minimum needed to reproduce: what the user did, what they expected,
+        what actually happened (exact error text, wrong output, etc.) — it does not start guessing
+        at causes from a vague description.</p>
+    </div></section>
+
+    <section class="stage"><div class="node">3</div><div class="card">
+      <h3>Route to the matching debug skill</h3>
+      <p class="lede" style="margin-top:0.3rem;">Which skill runs depends on <code>kind</code> and, for teaching, the brief's <code>Format</code>:</p>
+      <div class="branch3">
+        <div class="branch-box"><h4>projects / concepts</h4><p><span class="skillname">project-debug</span></p></div>
+        <div class="branch-box"><h4>teaching, Format: notebook</h4><p><span class="skillname">teaching-debug</span></p></div>
+        <div class="branch-box"><h4>teaching, Format: full_app</h4><p><span class="skillname">project-debug</span> — already handles frontend/backend contract issues</p></div>
+      </div>
+      <p style="margin-top:0.8rem;font-size:0.9rem;">Whichever runs: reproduce the real failure, diagnose, fix one hypothesis at a time, re-run until the reported behavior actually works — not until it looks plausibly fixed.</p>
+    </div></section>
+
+    <section class="stage gate"><div class="node">4</div><div class="card">
+      <h3>Re-certify — not just the one symptom</h3>
+      <p class="lede" style="margin-top:0.3rem;">A bug fix isn't done until the whole gate is green again, not just the reported symptom:</p>
+      <p style="font-size:0.9rem;"><code>projects</code> / <code>concepts</code> → re-run <span class="skillname">run-tests</span> (full suite), and <span class="skillname">run-and-verify</span> too if the fix touched anything on the request path.<br>
+      <code>teaching</code> → re-run <span class="skillname">teaching-verify</span> (top to bottom for notebook, the full happy-path flow again for full_app).</p>
+    </div></section>
+
+    <section class="stage"><div class="node">5</div><div class="card">
+      <h3>Record what changed</h3>
+      <p class="lede" style="margin-top:0.3rem;"><code>&lt;kind&gt;/&lt;slug&gt;/README.md</code>'s "Testing" section gets updated with what was wrong and what changed — the only file this command touches outside the actual fix.</p>
+    </div></section>
+  </div>
+
+  <div class="contrast">
+    <h2>Why this exists separately from the full pipeline</h2>
+    <p>During an <em>initial</em> build, the pipeline's own test/verify stages already call the
+      matching debug skill automatically the moment something fails — you never need this command
+      for that. <code>/fix-bug</code> is only for a failure discovered <em>after</em> a unit already
+      shipped once: it skips straight to reproduce → fix → re-certify, without re-running clarify,
+      design, or the full build chain that produced the working version in the first place.</p>
+  </div>
+</div>
+</section>
+
+<footer>
+  <span>Coding_Agent_Enabled_Demo · command &amp; skill reference, five tabs</span>
+  <span class="mono">.claude/commands · .claude/skills</span>
+</footer>
+
+<script>
+(function(){
+  var buttons = document.querySelectorAll('.tabbtn');
+  var panels = {
+    onego: document.getElementById('tab-onego'),
+    teaching: document.getElementById('tab-teaching'),
+    eval: document.getElementById('tab-eval'),
+    runpipe: document.getElementById('tab-runpipe'),
+    fixbug: document.getElementById('tab-fixbug')
+  };
+  function activate(key, updateHash){
+    buttons.forEach(function(b){
+      var on = b.getAttribute('data-tab') === key;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    Object.keys(panels).forEach(function(k){
+      panels[k].classList.toggle('active', k === key);
+    });
+    if(updateHash){
+      try{ history.replaceState(null, '', '#' + key); }catch(e){}
+    }
+    window.scrollTo({top:0, behavior:'auto'});
+  }
+  buttons.forEach(function(b){
+    b.addEventListener('click', function(){ activate(b.getAttribute('data-tab'), true); });
+  });
+  var initial = (location.hash || '').replace('#','');
+  if(initial && panels[initial]){ activate(initial, false); }
+})();
+</script>

@@ -1,0 +1,1392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="The AI Eval Process — a teaching playbook for product evals, error analysis, judges, CI/CD, RAG and agent evaluation."/>
+<title>The AI Eval Process — Teaching Playbook</title>
+<style>
+:root{--bg:#f6f8fb;--paper:#ffffff;--ink:#172033;--muted:#64748b;--line:#dfe6ef;--accent:#5b5bd6;--accent2:#0f766e;--warn:#a16207;--soft:#eef2ff;--soft2:#ecfdf5;--code:#111827;--shadow:0 10px 30px rgba(15,23,42,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.65}
+a{color:inherit}.topbar{position:sticky;top:0;z-index:50;height:4px;background:linear-gradient(90deg,var(--accent),#8b5cf6,var(--accent2));transform-origin:left}.shell{display:grid;grid-template-columns:300px minmax(0,1fr);max-width:1500px;margin:auto;min-height:100vh}.sidebar{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 18px 40px 24px;border-right:1px solid var(--line);background:rgba(246,248,251,.95);backdrop-filter:blur(10px)}.brand{font-weight:800;font-size:15px;letter-spacing:.02em;margin-bottom:6px}.subtitle{font-size:12px;color:var(--muted);margin-bottom:18px}.toc a{display:block;text-decoration:none;border-radius:8px;padding:6px 8px;color:#475569;font-size:12px;line-height:1.35;margin:1px 0}.toc a:hover,.toc a.active{background:#e9edff;color:#3730a3}.toc-l1{font-weight:800;margin-top:12px!important;color:#1e293b!important}.toc-l2{font-weight:650}.toc-l3{padding-left:20px!important;color:#64748b!important}.sidebar-actions{display:flex;gap:8px;margin:12px 0 18px}.btn{border:1px solid var(--line);background:white;padding:8px 10px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}.main{padding:48px 7vw 100px;min-width:0}.hero{max-width:1000px;margin:0 auto 36px;background:linear-gradient(135deg,#171a35 0%,#30306f 56%,#0f766e 130%);color:white;border-radius:24px;padding:44px 48px;box-shadow:var(--shadow);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:300px;height:300px;border-radius:50%;right:-80px;top:-110px;background:rgba(255,255,255,.08)}.kicker{font-size:12px;text-transform:uppercase;letter-spacing:.18em;font-weight:800;opacity:.78}.hero h1{font-size:clamp(34px,5vw,62px);line-height:1.02;margin:12px 0 18px;letter-spacing:-.04em}.hero p{max-width:760px;font-size:18px;color:#e2e8f0;margin:0}.hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.pill{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);border-radius:999px;padding:7px 11px;font-size:12px}.roadmap{max-width:1000px;margin:0 auto 36px;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 4px 16px rgba(15,23,42,.04)}.roadmap-title{text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:12px}.roadmap-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.roadmap-grid>div{border-radius:12px;background:#f8fafc;padding:14px;border:1px solid #edf2f7}.roadmap b{display:block;font-size:20px;color:var(--accent)}.roadmap span{display:block;font-weight:800}.roadmap small{display:block;color:var(--muted);line-height:1.3;margin-top:3px}.article{max-width:1000px;margin:auto;background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:48px 56px;box-shadow:var(--shadow)}.article>h1:first-child{display:none}h1,h2,h3{scroll-margin-top:24px}h1{font-size:34px;line-height:1.2;margin:70px 0 24px;letter-spacing:-.025em;border-bottom:1px solid var(--line);padding-bottom:14px}h1.part-heading:before{content:"SECTION";display:block;font-size:10px;letter-spacing:.16em;color:var(--accent);margin-bottom:8px}h2{font-size:26px;line-height:1.25;margin:48px 0 14px;letter-spacing:-.02em}h3{font-size:19px;margin:32px 0 10px;color:#334155}.step-heading{display:flex;align-items:center;gap:12px}.step-badge{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 9px;border-radius:10px;background:var(--accent);color:white;font-size:15px;box-shadow:0 5px 14px rgba(91,91,214,.25)}p{margin:12px 0 18px}.running-example{background:var(--soft2);border-left:4px solid var(--accent2);padding:14px 16px;border-radius:0 10px 10px 0;color:#134e4a}.key-rule{background:#fff7ed;border:1px solid #fed7aa;border-left:5px solid #ea580c;padding:16px 18px;border-radius:10px;font-weight:750;color:#7c2d12}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:13px;margin:20px 0 28px}table{width:100%;border-collapse:collapse;font-size:14px;min-width:650px}th{background:#f1f5f9;text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);font-size:12px;text-transform:none;letter-spacing:.01em}td{padding:11px 12px;vertical-align:top;border-bottom:1px solid #edf2f7}tr:last-child td{border-bottom:0}blockquote{margin:18px 0;padding:14px 18px;border-left:4px solid #94a3b8;background:#f8fafc;color:#334155;border-radius:0 10px 10px 0}pre{background:var(--code);color:#e5e7eb;padding:18px 20px;border-radius:14px;overflow:auto;font-size:13px;line-height:1.55;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}p code,li code,td code{background:#eef2f7;padding:2px 5px;border-radius:5px;color:#334155;font-size:.92em}.formula{margin:20px 0;text-align:center;background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto}.formula code{font-family:Georgia,"Times New Roman",serif;font-size:19px;color:#1e293b;background:none}.process-visual{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:center;margin:20px 0 30px;padding:20px;border-radius:16px;background:linear-gradient(180deg,#f8fafc,#eef2ff);border:1px solid #dbe3f0;position:relative}.pv-node{background:white;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}.pv-node span{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:800;margin-bottom:5px}.pv-node b,.pv-node small{display:block}.pv-node small{color:var(--muted);font-size:11px;margin-top:2px}.pv-arrow{font-size:26px;color:#94a3b8}.pv-loop{grid-column:1/-1;text-align:center;font-size:12px;color:var(--accent2);font-weight:800;margin-top:2px}ul,ol{padding-left:24px}li{margin:5px 0}hr{border:0;border-top:1px solid var(--line);margin:42px 0}.footer-note{max-width:1000px;margin:24px auto;color:var(--muted);font-size:12px;text-align:center}.backtop{position:fixed;right:22px;bottom:22px;border:0;border-radius:999px;width:44px;height:44px;background:#172033;color:white;box-shadow:var(--shadow);cursor:pointer;font-size:18px;opacity:0;pointer-events:none;transition:.2s}.backtop.show{opacity:1;pointer-events:auto}
+@media(max-width:1050px){.shell{display:block}.sidebar{display:none}.main{padding:28px 18px 80px}.article{padding:34px 24px}.hero{padding:34px 28px}.roadmap-grid{grid-template-columns:1fr 1fr}.roadmap-grid>div:last-child{grid-column:1/-1}.process-visual{grid-template-columns:1fr}.pv-arrow{transform:rotate(90deg);text-align:center}.pv-loop{grid-column:1}}
+@media print{body{background:white}.sidebar,.topbar,.backtop,.sidebar-actions{display:none!important}.shell{display:block}.main{padding:0}.hero{box-shadow:none;border-radius:0;background:white;color:black;padding:20px 0}.hero p{color:#334155}.pill{border-color:#cbd5e1;background:white;color:#334155}.article{box-shadow:none;border:0;border-radius:0;padding:0}.roadmap{box-shadow:none}.table-wrap{overflow:visible}pre{white-space:pre-wrap}.article h1,.article h2,.article h3{break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">AI Eval Process</div>
+    <div class="subtitle">Teaching Playbook · Full reference</div>
+    <div class="sidebar-actions"><button class="btn" onclick="window.print()">Print / Save PDF</button></div>
+    <nav class="toc"><a class="toc-l1" href="#part-i-the-theory-you-teach-before-the-process">Part I — The theory you teach before the process</a>
+<a class="toc-l2" href="#1-what-eval-means-here">1. What &quot;eval&quot; means here</a>
+<a class="toc-l2" href="#2-the-three-gulfs-the-diagnostic-frame">2. The Three Gulfs — the diagnostic frame</a>
+<a class="toc-l2" href="#3-why-the-ordering-is-the-whole-methodology">3. Why the ordering is the whole methodology</a>
+<a class="toc-l2" href="#4-the-loop">4. The loop</a>
+<a class="toc-l1" href="#part-ii-the-process-step-by-step">Part II — The process, step by step</a>
+<a class="toc-l2" href="#step-1-write-the-specification">Step 1 — Write the specification</a>
+<a class="toc-l2" href="#step-2-define-query-dimensions-and-generate-the-bootstrap-set">Step 2 — Define query dimensions and generate the bootstrap set</a>
+<a class="toc-l2" href="#step-3-instrument-and-collect-traces">Step 3 — Instrument and collect traces</a>
+<a class="toc-l2" href="#step-4-open-coding">Step 4 — Open coding</a>
+<a class="toc-l2" href="#step-5-axial-coding-build-the-failure-taxonomy">Step 5 — Axial coding: build the failure taxonomy</a>
+<a class="toc-l2" href="#step-6-prioritize">Step 6 — Prioritize</a>
+<a class="toc-l2" href="#step-7-route-each-failure-mode-to-an-evaluator-type">Step 7 — Route each failure mode to an evaluator type</a>
+<a class="toc-l2" href="#step-8-build-the-llm-judge">Step 8 — Build the LLM judge</a>
+<a class="toc-l2" href="#step-9-human-labels-splits-and-inter-annotator-agreement">Step 9 — Human labels, splits, and inter-annotator agreement</a>
+<a class="toc-l2" href="#step-10-align-the-judge-and-measure-honestly">Step 10 — Align the judge and measure honestly</a>
+<a class="toc-l2" href="#step-11-improve">Step 11 — Improve</a>
+<a class="toc-l2" href="#step-12-ci-gate-and-online-monitoring">Step 12 — CI gate and online monitoring</a>
+<a class="toc-l3" href="#ci-catching-known-unknowns">CI — catching known unknowns</a>
+<a class="toc-l3" href="#cd-catching-unknown-unknowns">CD — catching unknown unknowns</a>
+<a class="toc-l2" href="#step-13-close-the-loop">Step 13 — Close the loop</a>
+<a class="toc-l2" href="#step-14-cost-and-latency-optimization">Step 14 — Cost and latency optimization</a>
+<a class="toc-l1" href="#part-iii-specialized-tracks">Part III — Specialized tracks</a>
+<a class="toc-l2" href="#rag-evaluate-retrieval-separately-from-generation">RAG: evaluate retrieval separately from generation</a>
+<a class="toc-l2" href="#agents-evaluate-the-trajectory-not-the-destination">Agents: evaluate the trajectory, not the destination</a>
+<a class="toc-l2" href="#multi-turn-isolate-before-you-diagnose">Multi-turn: isolate before you diagnose</a>
+<a class="toc-l1" href="#part-iv-the-math-worked">Part IV — The math, worked</a>
+<a class="toc-l2" href="#1-why-percent-agreement-lies-cohens">1. Why percent agreement lies — Cohen&#x27;s κ</a>
+<a class="toc-l2" href="#2-why-the-raw-judge-score-is-wrong-bias-correction">2. Why the raw judge score is wrong — bias correction</a>
+<a class="toc-l2" href="#3-why-you-need-the-interval-and-how-correction-widens-it">3. Why you need the interval — and how correction widens it</a>
+<a class="toc-l1" href="#part-v-tooling">Part V — Tooling</a>
+<a class="toc-l2" href="#by-function">By function</a>
+<a class="toc-l2" href="#two-tool-pattern">Two-tool pattern</a>
+<a class="toc-l2" href="#for-a-teaching-repo-specifically">For a teaching repo specifically</a>
+<a class="toc-l1" href="#part-vi-operating-model">Part VI — Operating model</a>
+<a class="toc-l1" href="#part-vii-anti-pattern-catalogue">Part VII — Anti-pattern catalogue</a>
+<a class="toc-l1" href="#appendix-one-page-summary">Appendix — One-page summary</a></nav>
+  </aside>
+  <main class="main">
+    <section class="hero">
+      <div class="kicker">Product Evals · Error Analysis · Reliable Agents</div>
+      <h1>The AI Eval Process</h1>
+      <p>A teaching playbook for building evaluation systems that discover real failure modes, validate automated judges, drive engineering priorities, and close the loop from production back to analysis.</p>
+      <div class="hero-meta"><span class="pill">14-step lifecycle</span><span class="pill">RAG + agents + multi-turn</span><span class="pill">Worked e-commerce support example</span><span class="pill">Math + CI/CD + tooling</span></div>
+    </section>
+    
+<section class="roadmap" aria-label="14-step roadmap">
+  <div class="roadmap-title">14-step evaluation lifecycle</div>
+  <div class="roadmap-grid">
+    <div><b>1–2</b><span>Define</span><small>Spec + dimensions</small></div>
+    <div><b>3–6</b><span>Analyze</span><small>Trace + taxonomy + priority</small></div>
+    <div><b>7–10</b><span>Measure</span><small>Route + judge + validate</small></div>
+    <div><b>11–13</b><span>Improve</span><small>Fix + gate + loop</small></div>
+    <div><b>14</b><span>Optimize</span><small>Cost + latency</small></div>
+  </div>
+</section>
+    <article class="article"><h1 id="the-ai-eval-process-a-teaching-playbook">The AI Eval Process — A Teaching Playbook</h1>
+<p class="running-example">Worked throughout on one running example: an <strong>e-commerce customer support resolution agent</strong> with order lookup, refund-policy RAG, and an escalation tool.</p>
+<hr/>
+<h1 class="part-heading" id="part-i-the-theory-you-teach-before-the-process">Part I — The theory you teach before the process</h1>
+<h2 id="1-what-eval-means-here">1. What "eval" means here</h2>
+<p>Product evals, not foundation-model benchmarks. MMLU tells you nothing about whether <em>your</em> agent misroutes refunds on multi-order threads. The unit of analysis is your pipeline, your data, your failure modes.</p>
+<p>Say this explicitly to students, because most arrive thinking evals means leaderboards.</p>
+<h2 id="2-the-three-gulfs-the-diagnostic-frame">2. The Three Gulfs — the diagnostic frame</h2>
+<p>Every LLM system failure sits in one of three gaps. Naming the gulf tells you which phase of the process to reach for.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Gulf</th>
+<th>The gap</th>
+<th>Symptom</th>
+<th>Which phase addresses it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Comprehension</strong></td>
+<td>Between you and your data — you don't know how the system behaves across the input distribution</td>
+<td>"I think it's fine, we spot-checked a few"</td>
+<td>Error analysis (steps 3–6)</td>
+</tr>
+<tr>
+<td><strong>Specification</strong></td>
+<td>Between your intent and your prompt — you wrote something ambiguous</td>
+<td>The model did something defensible that you didn't want</td>
+<td>Spec writing (step 1)</td>
+</tr>
+<tr>
+<td><strong>Generalization</strong></td>
+<td>Between your prompt and the model's behavior on unseen input</td>
+<td>Works on your examples, breaks on real traffic</td>
+<td>Measurement + improvement (steps 7–11)</td>
+</tr>
+</tbody>
+</table></div>
+<p>The pedagogically useful point: <strong>most teams try to fix a Comprehension problem with a Specification tool.</strong> They add another line to the system prompt because they never looked at the data. The prompt grows, quality doesn't move.</p>
+<h2 id="3-why-the-ordering-is-the-whole-methodology">3. Why the ordering is the whole methodology</h2>
+<p>Two ways to arrive at evaluation criteria:</p>
+<p><strong>Deductive (top-down):</strong> decide the tasks → decide the metrics → generate data → measure.
+<strong>Inductive (bottom-up):</strong> collect outputs → describe what went wrong → cluster into failure modes → build metrics for the modes that occur.</p>
+<p>The deductive route fails for a reason that isn't obvious and is worth teaching directly: <strong>criteria drift.</strong> People do not know their grading criteria until they have seen model outputs. Ask someone to define "good response" before they've read fifty traces and they'll write something generic. Show them fifty traces and they'll produce twenty sharp, specific, checkable rules — most of which they could not have anticipated.</p>
+<p>This is why the metric-first ordering produces judges for "helpfulness" and "conciseness" that pass every real bug. The bug isn't the judge. The bug is that the criterion was invented in a vacuum.</p>
+<p class="key-rule">The practical rule to give students: <strong>you may not write a metric until you have a failure taxonomy with counts.</strong></p>
+<h2 id="4-the-loop">4. The loop</h2>
+<pre><code>        ┌──────────────────────────────────────┐
+        ▼                                      │
+    ANALYZE ──────► MEASURE ──────► IMPROVE ───┘
+  (error analysis) (evaluators)    (fixes)
+   steps 3–6        steps 7–10      step 11
+
+</code></pre>
+<div aria-label="Analyze Measure Improve loop" class="process-visual">
+<div class="pv-node"><span>1</span><b>ANALYZE</b><small>Error analysis · Steps 3–6</small></div>
+<div class="pv-arrow">→</div>
+<div class="pv-node"><span>2</span><b>MEASURE</b><small>Evaluators · Steps 7–10</small></div>
+<div class="pv-arrow">→</div>
+<div class="pv-node"><span>3</span><b>IMPROVE</b><small>Fixes · Step 11</small></div>
+<div class="pv-loop">↺ Return to traces</div>
+</div>
+<p>Not a pipeline — a cycle. The single most common implementation gap is a loop that terminates after "metrics improved." After you fix a failure mode, the <em>distribution</em> of remaining failures changes; the taxonomy from round one is stale. You go back to traces, not forward to a dashboard.</p>
+<hr/>
+<h1 class="part-heading" id="part-ii-the-process-step-by-step">Part II — The process, step by step</h1>
+<p>Each step: <strong>Purpose → Method → Worked example → Tool → Exit criterion → Anti-pattern.</strong></p>
+<hr/>
+<h2 class="step-heading" id="step-1-write-the-specification"><span class="step-badge">1</span><span>Write the specification</span></h2>
+<p><strong>Purpose.</strong> Close the Specification gulf before you measure anything. You cannot label a trace as a failure without a standard, and "was this good?" is not a standard.</p>
+<p><strong>Method.</strong> Convert the product intent into explicit <strong>must-always</strong> and <strong>must-never</strong> rules. Each rule must be traceable to a concrete user-unhappiness scenario — a thing that, if it happened, a real customer would complain about or a real business metric would move.</p>
+<p>Format: one rule, one line, testable in principle.</p>
+<p><strong>Worked example.</strong></p>
+<pre><code class="language-markdown">## MUST ALWAYS
+A1. Quote the return window that applies to the SKU's category, not the
+    site-wide default.
+    → Scenario: customer buys fresh produce, is told 30 days, tries to
+      return on day 5, refund denied, files a complaint.
+A2. When multiple orders are in the conversation, restate which order
+    an action applies to before executing it.
+    → Scenario: agent cancels the wrong order.
+A3. Cite the policy document ID for any policy claim.
+    → Scenario: CS supervisor cannot audit why the agent said what it said.
+A4. Carry forward customer-stated constraints (delivery address changed,
+    item already opened) for the remainder of the conversation.
+
+## MUST NEVER
+N1. Promise a refund amount before the refund-eligibility tool has returned.
+N2. Escalate to a human when the policy is unambiguous and the tool
+    succeeded.
+    → Scenario: escalation queue floods, handle time doubles, cost per
+      contact rises.
+N3. State a delivery date not present in a tool result.
+N4. Reveal another customer's order details.
+
+</code></pre>
+<p><strong>Tool.</strong> A markdown file in the repo. Nothing more. <code>evals/spec.md</code>, version-controlled, reviewed in PRs alongside the prompt.</p>
+<p><strong>Exit criterion.</strong> Every rule names a scenario. If you can't write the scenario, delete the rule — it's an aesthetic preference, not a requirement.</p>
+<p><strong>Anti-pattern.</strong> Rules like "be helpful," "be concise," "maintain a professional tone." These are unfalsifiable and they will become your first useless judge. If a rule can't fail a specific trace, it isn't a rule.</p>
+<p><strong>Note on sequencing.</strong> This is the one deductive step in the process, and it's fine because a spec is not a metric. You are writing down what you <em>think</em> matters. Error analysis will tell you what <em>actually</em> breaks, and roughly a third of your spec rules will turn out to be non-issues while the top failure mode won't be in the spec at all. That's the expected outcome, not a failure of the exercise.</p>
+<hr/>
+<h2 class="step-heading" id="step-2-define-query-dimensions-and-generate-the-bootstrap-set"><span class="step-badge">2</span><span>Define query dimensions and generate the bootstrap set</span></h2>
+<p><strong>Purpose.</strong> Get a realistic, <em>diverse</em> input distribution when you don't have production traffic — or when production traffic is skewed toward the easy cases.</p>
+<p><strong>Method.</strong> Do not ask an LLM for "100 customer support queries." You'll get 100 variations of "where is my order," because the model regresses to the modal case and your error analysis will discover nothing.</p>
+<p>Instead:</p>
+<ol>
+<li>Define <strong>3–4 dimensions</strong> that meaningfully vary the difficulty and shape of a query.</li>
+<li>Take the cross-product to get <strong>tuples</strong>.</li>
+<li>Sample tuples (stratified, so no dimension value is starved).</li>
+<li>Generate <strong>one query per tuple</strong>, with the tuple in the generation prompt.</li>
+<li>Keep the tuple attached to the query as metadata — you'll use it in step 5 to see whether failures cluster on a dimension.</li>
+</ol>
+<p><strong>Worked example.</strong></p>
+<pre><code class="language-yaml">dimensions:
+  persona:
+    - first_time_buyer
+    - power_shopper_many_open_orders
+    - marketplace_seller
+    - customer_with_prior_complaint
+  intent:
+    - refund_request
+    - order_tracking
+    - policy_question
+    - item_not_as_described
+    - cancel_before_ship
+  complexity:
+    - single_order_clear_policy
+    - multi_order_ambiguous_reference
+    - category_specific_policy_edge_case
+    - requires_escalation
+  register:
+    - neutral
+    - frustrated
+    - terse_low_context
+
+</code></pre>
+<p>4 × 5 × 4 × 3 = <strong>240 tuples</strong>. Sample 100–120.</p>
+<p>Generation prompt per tuple:</p>
+<pre><code>Write one realistic opening message a customer would send to support.
+persona: power_shopper_many_open_orders
+intent: refund_request
+complexity: multi_order_ambiguous_reference
+register: frustrated
+
+Constraints: 1-3 sentences. Do not mention order IDs explicitly — refer
+to orders the way a real frustrated person would ("the shoes", "the one
+from last week"). No greeting boilerplate.
+
+</code></pre>
+<p>Output: <em>"this is the second time I'm asking. the shoes were the wrong size and I want my money back, and cancel the other thing too."</em></p>
+<p>That query exercises A2 and N1 simultaneously. A generic "generate support queries" prompt would never produce it.</p>
+<p><strong>Tool.</strong> Python script + any model. Keep it in-repo. Braintrust, Langfuse, and Phoenix all have dataset objects you can push these into once generated — but generate them yourself, don't use a platform's "auto-generate test cases" button, which reproduces exactly the modal-case problem.</p>
+<p><strong>Exit criterion.</strong> Read 10 generated queries. If more than two feel like the same query, your dimensions aren't doing work — add one that varies the <em>structure</em> of the problem, not just the topic.</p>
+<p><strong>Anti-pattern.</strong> Dimensions that are all topical (<code>intent</code>, <code>product_category</code>, <code>language</code>). At least one dimension must vary <em>difficulty</em> — that's where failures live.</p>
+<p><strong>If you do have production traffic:</strong> use it, and use dimensions to check coverage instead of to generate. Cluster real queries, map them to your dimension grid, and find the cells with no traffic — those are your blind spots, and that's where synthetic generation earns its place.</p>
+<hr/>
+<h2 class="step-heading" id="step-3-instrument-and-collect-traces"><span class="step-badge">3</span><span>Instrument and collect traces</span></h2>
+<p><strong>Purpose.</strong> You cannot do error analysis on final answers. An agent that gives a correct-looking answer on top of a failed retrieval is a landmine, and final-answer labeling will mark it as a pass.</p>
+<p><strong>Method.</strong> A trace is the complete record of one query: every turn, every tool call with its arguments, every tool result, every retrieval with the documents returned and their scores, every intermediate model output, plus latency and token counts.</p>
+<p>Minimum viable schema:</p>
+<pre><code class="language-json">{
+  "trace_id": "t_0142",
+  "dimension_tuple": {"persona": "power_shopper...", "intent": "refund_request", ...},
+  "turns": [
+    {
+      "index": 0,
+      "role": "user",
+      "content": "this is the second time I'm asking..."
+    },
+    {
+      "index": 1,
+      "role": "assistant",
+      "retrievals": [
+        {"doc_id": "POL-RETURN-GENERAL-v3", "score": 0.81, "snippet": "..."},
+        {"doc_id": "POL-RETURN-APPAREL-v2", "score": 0.77, "snippet": "..."}
+      ],
+      "tool_calls": [
+        {"name": "lookup_orders", "args": {"customer_id": "c_991"}}
+      ],
+      "tool_results": [
+        {"name": "lookup_orders", "status": "ok", "result": [...]}
+      ],
+      "content": "I can help with that..."
+    }
+  ],
+  "final_response": "...",
+  "metadata": {"model": "...", "prompt_version": "v7", "latency_ms": 4210,
+               "tokens_in": 3312, "tokens_out": 288, "cost_usd": 0.0141}
+}
+
+</code></pre>
+<p><strong>Tool.</strong> This is where a platform earns its keep. Trace capture is genuinely annoying to build.</p>
+<ul>
+<li><strong>Langfuse</strong> — MIT-licensed core, self-hostable, OpenTelemetry-compatible. The default recommendation if data residency matters (relevant for Korean PII) or you want to own the stack. Now part of ClickHouse.</li>
+<li><strong>Arize Phoenix</strong> — open-source, self-hosted, strong RAG-specific eval library.</li>
+<li><strong>LangSmith</strong> — the right answer if and only if your stack is LangChain/LangGraph; the integration premium evaporates outside it.</li>
+<li><strong>Braintrust</strong> — eval-first; the dataset→experiment→comparison loop is the most polished, generous free tier, but SaaS-only.</li>
+<li><strong>Opik</strong> — Apache 2.0, self-hostable, agent-oriented.</li>
+</ul>
+<p>A common and reasonable end state is <strong>two tools</strong>: a lightweight CI framework (promptfoo, DeepEval, or plain pytest) plus a platform for annotation, regression tracking, and stakeholder dashboards.</p>
+<p>You can also log to JSONL and start there. Hamel's own position is that a CSV or JSON file is a legitimate starting point. For a <em>teaching</em> repo, JSONL is better — students see the data structure instead of a vendor UI.</p>
+<p><strong>Exit criterion.</strong> Pick a random trace and answer: "at which exact step did this go wrong?" If the trace doesn't let you answer that, your instrumentation is insufficient.</p>
+<p><strong>Anti-pattern.</strong> Logging only <code>{input, output}</code>. You will spend weeks unable to distinguish a retrieval bug from a generation bug.</p>
+<hr/>
+<h2 class="step-heading" id="step-4-open-coding"><span class="step-badge">4</span><span>Open coding</span></h2>
+<p><strong>Purpose.</strong> Discover what actually breaks, in language that comes from the data rather than from your priors. This is the step everyone skips and the step that determines whether everything downstream is worth anything.</p>
+<p><strong>Method.</strong></p>
+<ul>
+<li><strong>One annotator.</strong> The "benevolent dictator." Multiple annotators at this stage fragment the vocabulary and you end up with three overlapping taxonomies. Bring in a second annotator later, at step 9, when you're measuring agreement on a <em>defined</em> criterion.</li>
+<li><strong>Freeform notes.</strong> No categories, no dropdown, no rubric. Prose. If you give yourself a category list, you'll fit observations into it and discover nothing.</li>
+<li><strong>First failure only.</strong> For each trace, identify the <em>earliest</em> point where things diverged, and describe that. This is the single most important discipline in the whole process and I'll justify it below.</li>
+<li><strong>Binary judgment.</strong> Did this trace fail or not? Not a 1–5 score. You'll waste an hour arguing whether something is a 3 or a 4, and the distinction will never inform a decision.</li>
+<li><strong>~100 traces or theoretical saturation</strong>, whichever comes first. Saturation = you've read 15 more traces and seen no new <em>kind</em> of failure. Track this: log the cumulative count of distinct failure types after each batch of 10. When the curve flattens, stop.</li>
+</ul>
+<p><strong>Why first-failure-only matters.</strong> Consider this trace:</p>
+<blockquote>
+<p>Turn 1: customer asks about returning opened cosmetics.
+Turn 2: retrieval pulls <code>POL-RETURN-GENERAL-v3</code> instead of <code>POL-RETURN-COSMETICS-v1</code>.
+Turn 3: agent states a 30-day window (wrong — opened cosmetics are non-returnable).
+Turn 4: agent offers a refund it can't honor.
+Turn 5: agent escalates when the customer pushes back.</p>
+</blockquote>
+<p>If you annotate the final answer, you log "offered an invalid refund" and "unnecessary escalation" — two failure modes, both of which are <em>downstream consequences of one retrieval bug</em>. Your taxonomy inflates, your frequency counts are wrong, and you build two judges for symptoms instead of fixing one cause. First-failure discipline collapses this to one code: <code>wrong policy variant retrieved</code>.</p>
+<p><strong>Worked example — bad and good notes.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Bad</th>
+<th>Why it's bad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Response was unhelpful."</td>
+<td>No mechanism, not actionable, not clusterable</td>
+</tr>
+<tr>
+<td>"Hallucinated."</td>
+<td>Category masquerading as an observation</td>
+</tr>
+<tr>
+<td>"Score: 2/5"</td>
+<td>Tells you nothing about what to fix</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Good</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"T2: retrieval returned POL-RETURN-GENERAL-v3 (score .81) over POL-RETURN-COSMETICS-v1 (.62). Query said 'opened' but not 'cosmetics' — the category never entered the retrieval query. First failure = retrieval, T2."</td>
+</tr>
+<tr>
+<td>"T3: customer said 'the shoes' and 'the other thing'. Agent bound 'the other thing' to order #8821 with no confirmation; correct referent was #8834 by timestamp. Violates A2."</td>
+</tr>
+<tr>
+<td>"T4: customer stated in T1 that the item was already opened. Agent's T4 response quotes the unopened-item return path. Constraint dropped between T1 and T4."</td>
+</tr>
+<tr>
+<td>"T2: agent escalated. Policy was unambiguous and the eligibility tool returned OK. Trigger appears to be the phrase 'I don't think that's right' — hedging read as dissatisfaction. Violates N2."</td>
+</tr>
+</tbody>
+</table></div>
+<p>Notice these are <em>specific enough to fix</em> and <em>general enough to cluster</em>. That's the target register.</p>
+<p><strong>Tool.</strong> Build a custom annotation view. This is genuinely the highest-leverage 2 hours you'll spend — a simple local page showing one trace, rendered readably, with a notes box and a pass/fail toggle, writing to JSONL. Every platform has an annotation queue (LangSmith's is the most complete), but they impose their schema and their friction, and friction here directly reduces the number of traces you review. Build the viewer with Claude Code in an afternoon.</p>
+<p><strong>Exit criterion.</strong> The new-failure-type curve has flattened, and you can hand your notes to a colleague who could independently sort them into similar groups.</p>
+<p><strong>Anti-patterns.</strong></p>
+<ul>
+<li>Asking an LLM to do the open coding. Dump a trace into a model and ask "was this correct?" and it says yes, confidently, missing every nuance. LLMs are for <em>synthesis</em> in step 5, not discovery in step 4.</li>
+<li>Skipping ahead because the failures "seem obvious." They aren't. Roughly half of what you find will surprise you; that half is where the value is.</li>
+</ul>
+<hr/>
+<h2 class="step-heading" id="step-5-axial-coding-build-the-failure-taxonomy"><span class="step-badge">5</span><span>Axial coding: build the failure taxonomy</span></h2>
+<p><strong>Purpose.</strong> Turn a pile of notes into a structured, counted taxonomy. Counts are what convert observations into a prioritization signal.</p>
+<p><strong>Method.</strong> <em>Now</em> you can use an LLM. Feed it all the open-coding notes and ask for 5–8 candidate categories with definitions and member trace IDs. Then you review and correct — the model will over-merge distinct causes and occasionally invent a category to house one outlier.</p>
+<p>Requirements for a good taxonomy:</p>
+<ul>
+<li>Categories are <strong>causes</strong>, not symptoms (<code>wrong policy variant retrieved</code>, not <code>gave wrong answer</code>)</li>
+<li>Each has a one-sentence definition precise enough to label a new trace</li>
+<li>Each lists member trace IDs so you can spot-check</li>
+<li>Notes that fit nothing go in an explicit <code>unclassified</code> bucket — do not force them</li>
+</ul>
+<p><strong>Worked example.</strong></p>
+<pre><code class="language-yaml">- id: F1
+  label: Wrong policy variant retrieved
+  definition: Retrieval returns a policy document whose scope (category,
+    region, or version) does not match the SKU or context in question.
+  count: 18
+  members: [t_0007, t_0014, t_0031, ...]
+
+- id: F2
+  label: Order-referent misbinding on multi-order threads
+  definition: Agent binds an ambiguous customer reference ("the other one")
+    to an order without confirming, and the binding is wrong.
+  count: 11
+  members: [...]
+
+- id: F3
+  label: Constraint dropped after turn 3
+  definition: A customer-stated constraint from an early turn is absent from
+    the agent's reasoning in a later turn where it applies.
+  count: 9
+  members: [...]
+
+- id: F4
+  label: Over-escalation on hedging language
+  definition: Agent escalates despite unambiguous policy and successful tool
+    execution, triggered by customer expressions of doubt.
+  count: 7
+  members: [...]
+
+- id: F5
+  label: Tool result ignored in composition
+  definition: Tool returns correct data; the response contradicts it or omits it.
+  count: 5
+  members: [...]
+
+- id: F6
+  label: Fabricated tracking status
+  definition: Delivery status or date stated that appears in no tool result.
+  count: 3
+  members: [...]
+
+unclassified: [t_0088, t_0103]
+
+</code></pre>
+<p><strong>The cross-tab that earns the dimension work.</strong> Now break failures down by dimension tuple:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>first_time</th>
+<th>power_shopper</th>
+<th>seller</th>
+<th>prior_complaint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F1 wrong policy variant</td>
+<td>4</td>
+<td>5</td>
+<td>8</td>
+<td>1</td>
+</tr>
+<tr>
+<td>F2 order misbinding</td>
+<td>0</td>
+<td><strong>10</strong></td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>F3 constraint dropped</td>
+<td>2</td>
+<td>3</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>F4 over-escalation</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td><strong>5</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>F2 is essentially a power-shopper problem. F4 is essentially a prior-complaint problem. That's a far more actionable finding than two raw counts, and it's only available because you kept the tuples attached in step 2.</p>
+<p><strong>Tool.</strong> LLM for the clustering pass, then a YAML file in the repo. A pivot table for the cross-tab.</p>
+<p><strong>Exit criterion.</strong> Counts sum to your annotated failures; every category has a definition you could hand to a second annotator.</p>
+<p><strong>Anti-pattern.</strong> Bringing predefined categories to this step. If your taxonomy is <code>hallucination / relevance / toxicity / helpfulness</code>, you did deductive coding with extra steps and you've learned nothing about your product.</p>
+<hr/>
+<h2 class="step-heading" id="step-6-prioritize"><span class="step-badge">6</span><span>Prioritize</span></h2>
+<p><strong>Purpose.</strong> Decide where engineering time goes. This is the step that makes evals a <em>roadmap tool</em> rather than a QA activity, and it's the argument you'll use with stakeholders.</p>
+<p><strong>Method.</strong> Score each failure mode on three axes:</p>
+<ul>
+<li><strong>Frequency</strong> — from the counts. Extrapolate to production volume if you can.</li>
+<li><strong>Severity</strong> — business consequence. Refund a customer isn't owed = direct margin loss. Wrong tracking date = a contact and a trust hit. Assign in currency or in contacts if you can; ordinal 1–3 if you can't.</li>
+<li><strong>Fixability</strong> — how confident are you that a bounded change moves it? A retrieval bug with a clear cause is high; "the model sometimes reasons poorly" is low.</li>
+</ul>
+<p><strong>Worked example.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Failure</th>
+<th>Freq</th>
+<th>Severity</th>
+<th>Fixability</th>
+<th>Priority</th>
+<th>Hypothesized fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F1</td>
+<td>Wrong policy variant</td>
+<td>18</td>
+<td>High (margin)</td>
+<td>High</td>
+<td><strong>1</strong></td>
+<td>Add category to retrieval query; version-scope the index</td>
+</tr>
+<tr>
+<td>F2</td>
+<td>Order misbinding</td>
+<td>11</td>
+<td>High (wrong action)</td>
+<td>High</td>
+<td><strong>2</strong></td>
+<td>Force explicit confirmation when &gt;1 open order</td>
+</tr>
+<tr>
+<td>F4</td>
+<td>Over-escalation</td>
+<td>7</td>
+<td>Med (cost/contact)</td>
+<td>Med</td>
+<td><strong>3</strong></td>
+<td>Tighten escalation criteria in prompt; add negative examples</td>
+</tr>
+<tr>
+<td>F3</td>
+<td>Constraint dropped</td>
+<td>9</td>
+<td>Med</td>
+<td>Low</td>
+<td>4</td>
+<td>Needs decomposition or state extraction — bigger change</td>
+</tr>
+<tr>
+<td>F5</td>
+<td>Tool result ignored</td>
+<td>5</td>
+<td>High</td>
+<td>Med</td>
+<td>5</td>
+<td>—</td>
+</tr>
+<tr>
+<td>F6</td>
+<td>Fabricated tracking</td>
+<td>3</td>
+<td>High</td>
+<td>High</td>
+<td>6</td>
+<td>Code-assertable; cheap to gate</td>
+</tr>
+</tbody>
+</table></div>
+<p>Note F3 is more frequent than F4 but ranks lower — low fixability. That's a legitimate call, and being explicit about it is what stops the backlog from becoming a wish list.</p>
+<p><strong>Tool.</strong> A spreadsheet. Genuinely.</p>
+<p><strong>Exit criterion.</strong> You can answer "what are we fixing next quarter and why" with numbers.</p>
+<p><strong>How to explain this to leadership.</strong> "We reviewed 100 representative conversations. 18% failed because retrieval pulls the wrong policy version, concentrated in marketplace-seller queries. That's the top item. Here's the count, here's the mechanism, here's the fix, here's what we'll measure." This is a substantially stronger position than "quality score improved from 3.4 to 3.7."</p>
+<hr/>
+<h2 class="step-heading" id="step-7-route-each-failure-mode-to-an-evaluator-type"><span class="step-badge">7</span><span>Route each failure mode to an evaluator type</span></h2>
+<p><strong>Purpose.</strong> Decide, per failure mode, whether it's checked by <strong>code</strong> or by an <strong>LLM judge</strong>. Getting this wrong is expensive in both directions — a judge where code would do is slow, costly, and less reliable; code where judgment is needed is brittle and produces false confidence.</p>
+<p><strong>Method.</strong> The routing rule: <strong>if the criterion is checkable by string match, regex, JSON schema, set membership, numeric comparison, or a lookup against ground truth, it is code.</strong> Reserve judges for criteria that genuinely require reading and interpretation.</p>
+<p>A healthy suite is roughly <strong>2–3 code evals per 1–2 judges.</strong> If yours is all judges, you routed wrong.</p>
+<p><strong>Worked example.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Failure</th>
+<th>Check</th>
+<th>Type</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F6 fabricated tracking</td>
+<td>Does every date in the response appear in a tool result?</td>
+<td><strong>Code</strong></td>
+<td>Regex-extract dates, set-difference against tool result payloads</td>
+</tr>
+<tr>
+<td>F1 wrong policy variant</td>
+<td>Does the cited <code>doc_id</code> match the SKU category mapping?</td>
+<td><strong>Code</strong></td>
+<td>Lookup table <code>sku_category → allowed_doc_ids</code></td>
+</tr>
+<tr>
+<td>— cited at all</td>
+<td>Does the response contain a <code>[POL-...]</code> citation when making a policy claim?</td>
+<td><strong>Code</strong></td>
+<td>Regex</td>
+</tr>
+<tr>
+<td>F2 order misbinding</td>
+<td>Is the <code>order_id</code> in the refund tool call one that appeared in the conversation?</td>
+<td><strong>Code</strong></td>
+<td>Set membership</td>
+</tr>
+<tr>
+<td>F2 (harder half)</td>
+<td><em>Was the binding the one the customer meant?</em></td>
+<td><strong>Judge</strong></td>
+<td>Requires reading the reference</td>
+</tr>
+<tr>
+<td>N1 premature promise</td>
+<td>Does a currency amount appear before the eligibility tool returns?</td>
+<td><strong>Code</strong></td>
+<td>Positional check on the trace</td>
+</tr>
+<tr>
+<td>F3 constraint dropped</td>
+<td>Does the response account for constraints stated earlier?</td>
+<td><strong>Judge</strong></td>
+<td>Requires interpretation</td>
+</tr>
+<tr>
+<td>F4 over-escalation</td>
+<td>Escalation fired despite clear policy + tool success</td>
+<td><strong>Judge</strong> (with code precondition)</td>
+<td>Code filters to escalation cases; judge decides justification</td>
+</tr>
+<tr>
+<td>F5 tool result ignored</td>
+<td>Does the response contradict the tool payload?</td>
+<td><strong>Judge</strong></td>
+<td>Requires semantic comparison</td>
+</tr>
+</tbody>
+</table></div>
+<p>Note the pattern in F2 and F4: <strong>split the failure mode.</strong> The mechanical half becomes a cheap deterministic assertion; only the irreducibly interpretive half goes to a judge. This halves your judge-validation workload and makes the remaining judge's job narrow enough to actually be reliable.</p>
+<p><strong>Tool.</strong> Plain pytest functions for the code evals. <code>promptfoo</code> or <code>DeepEval</code> if you want assertion DSL and reporting for free. Ragas only if the system is RAG and nothing else.</p>
+<p><strong>Exit criterion.</strong> Every prioritized failure mode has a named evaluator and a one-line rationale for the routing.</p>
+<p><strong>Anti-pattern.</strong> Reaching for a judge because writing the code eval requires building a lookup table. The lookup table is a one-time cost; the judge is a permanent one — you have to validate it, revalidate it when models change, and pay inference on every eval run.</p>
+<hr/>
+<h2 class="step-heading" id="step-8-build-the-llm-judge"><span class="step-badge">8</span><span>Build the LLM judge</span></h2>
+<p><strong>Purpose.</strong> Automate the labeling of one specific, interpretive failure mode.</p>
+<p><strong>Method — the non-negotiables.</strong></p>
+<ol>
+<li><strong>One judge per failure mode.</strong> Not one judge scoring six dimensions. Multi-criteria judges have correlated errors and you cannot validate them per-criterion.</li>
+<li><strong>Binary output.</strong> Pass/fail. Not 1–5. A Likert judge's "3" is not stable across runs, across traces, or across the same trace on different days, and no downstream decision is made differently at 3 vs 4.</li>
+<li><strong>Critique before label.</strong> Force the model to write its reasoning first, then emit the verdict. This measurably improves agreement and — more importantly — gives you something to read when you're debugging disagreements.</li>
+<li><strong>Definition grounded in your spec.</strong> The judge's criterion should quote your <code>spec.md</code> rule and your taxonomy definition, not describe general quality.</li>
+<li><strong>Few-shots from the train split only.</strong> Never from dev (you'd overfit your iteration signal) or test (leakage).</li>
+</ol>
+<p><strong>Worked example — a judge for F3, constraint dropped.</strong></p>
+<pre><code class="language-markdown">You are evaluating one conversation between a customer support agent and a
+customer, for a single specific failure mode.
+
+## Failure mode
+CONSTRAINT DROPPED: the customer stated a constraint in an early turn
+(examples: the item is already opened; the delivery address has changed;
+they are travelling until a date; the item was a gift) and a later agent
+turn gives advice or takes an action that ignores that constraint, in a
+context where the constraint was material.
+
+This is NOT a failure if:
+- the constraint was never stated, only implied
+- the later turn is on an unrelated subject where the constraint is immaterial
+- the agent explicitly acknowledged the constraint and explained why it
+  does not change the outcome
+
+## Reference rule
+Spec A4: "Carry forward customer-stated constraints for the remainder of
+the conversation."
+
+## Conversation
+{{trace}}
+
+## Instructions
+1. List every constraint the customer stated, with the turn index.
+2. For each, identify whether a later agent turn was materially affected
+   by it, and whether the agent accounted for it.
+3. Then output your verdict.
+
+Write your analysis first. End your response with exactly one line:
+
+VERDICT: PASS
+or
+VERDICT: FAIL
+
+</code></pre>
+<p>Plus 3–5 few-shot examples appended from the train split — ideally including at least one <em>near-miss that passes</em>, because that's where judges are weakest.</p>
+<p><strong>Tool.</strong> Whatever model you use in production, or one tier up. Temperature 0. Keep the judge prompt in version control as a file; treat prompt changes as code changes.</p>
+<p><strong>Exit criterion.</strong> The judge runs and produces parseable binary output on the dev split. Note this is not "the judge is good" — that's step 10.</p>
+<p><strong>Anti-patterns.</strong></p>
+<ul>
+<li>A "response quality" judge. If you can't name which taxonomy entry it corresponds to, delete it.</li>
+<li>Numeric scoring. Every time.</li>
+<li>Letting the judge see the ground-truth label in its context. Sounds obvious; happens constantly via sloppy prompt templating.</li>
+</ul>
+<hr/>
+<h2 class="step-heading" id="step-9-human-labels-splits-and-inter-annotator-agreement"><span class="step-badge">9</span><span>Human labels, splits, and inter-annotator agreement</span></h2>
+<p><strong>Purpose.</strong> You need ground truth to validate the judge against. This is the expensive step and there's no way around it.</p>
+<p><strong>Method.</strong></p>
+<p><strong>Splits.</strong> Standard ML discipline, and violating it is the most common quiet failure in the whole process.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Split</th>
+<th>Share</th>
+<th>Used for</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Train</strong></td>
+<td>~20%</td>
+<td>Few-shot examples inside the judge prompt</td>
+<td>Can look freely</td>
+</tr>
+<tr>
+<td><strong>Dev</strong></td>
+<td>~40%</td>
+<td>Iterating the judge prompt</td>
+<td>Look as much as you like</td>
+</tr>
+<tr>
+<td><strong>Test</strong></td>
+<td>~40%</td>
+<td>Final TPR/TNR measurement</td>
+<td><strong>Read once, at the end</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>Stratify the split by the dimension tuple and by label, so no split ends up with three positives.</p>
+<p><strong>If you touch the test set during judge iteration, your TPR/TNR is optimistically biased and every number downstream is wrong.</strong> Enforce this mechanically — file permissions, a git-ignored path, a pre-commit hook, an env flag. Do not rely on discipline; under deadline pressure everyone peeks.</p>
+<p><strong>Inter-annotator agreement.</strong> When the criterion is subjective (tone, appropriateness, "did the agent account for the constraint"), one annotator isn't enough. Bring in a second and measure agreement — but measure it with <strong>Cohen's κ</strong>, not raw percent agreement.</p>
+<p>Why κ and not percent: if 90% of traces pass, two annotators who both just say "pass" every time agree 90% of the time and have learned nothing. κ corrects for agreement expected by chance.</p>
+<p>Threshold: <strong>κ ≥ 0.6</strong> before you trust the labeled set. Below that, the problem is almost never the annotators — it's that your failure-mode <em>definition</em> is ambiguous. Go sharpen the definition and relabel. This is a feature: κ is a test of your definition, not of your people.</p>
+<p><strong>Tool.</strong> Your custom annotation viewer from step 4, extended with a second-annotator mode. <code>sklearn.metrics.cohen_kappa_score</code> for the number. LangSmith's annotation queues if you want the multi-reviewer workflow off the shelf.</p>
+<p><strong>Exit criterion.</strong> κ ≥ 0.6 on the subjective modes; splits written to disk; test split locked.</p>
+<p><strong>Anti-pattern.</strong> Reporting "our annotators agreed 85% of the time." Compute κ. See Part IV for why 85% can be worthless.</p>
+<hr/>
+<h2 class="step-heading" id="step-10-align-the-judge-and-measure-honestly"><span class="step-badge">10</span><span>Align the judge and measure honestly</span></h2>
+<p><strong>Purpose.</strong> Produce a number you can defend: the estimated true failure rate, with an interval, corrected for the judge's own error.</p>
+<p><strong>Method.</strong></p>
+<p><strong>a) Iterate on dev.</strong> Run the judge on dev. Read every disagreement with the human label. The disagreements tell you what's wrong — usually the criterion definition is fuzzy, or the judge is anchoring on surface features. Revise the judge prompt. Re-run. Repeat until TPR and TNR on dev stop improving.</p>
+<p><strong>b) Measure on test, once.</strong> Run the final judge on the test split. Compute:</p>
+<ul>
+<li><strong>TPR</strong> (sensitivity) = TP / (TP + FN) — of the traces that truly failed, what fraction did the judge catch?</li>
+<li><strong>TNR</strong> (specificity) = TN / (TN + FP) — of the traces that truly passed, what fraction did the judge correctly pass?</li>
+</ul>
+<p><strong>c) Correct the bias.</strong> Now run the judge on your large unlabeled set and get a raw observed rate <code>p_obs</code>. That number is wrong, because the judge makes both kinds of error. Correct it:</p>
+<div class="formula"><code>\hat{\theta} = \frac{p\_{obs} + TNR - 1}{TPR + TNR - 1}</code></div>
+<p><strong>d) Bootstrap the interval.</strong> Resample the test set with replacement, recompute TPR/TNR and θ̂ on each draw, take the 2.5th and 97.5th percentiles. Report the interval, always.</p>
+<p><strong>Worked numbers are in Part IV</strong> — teach them explicitly, they're the most persuasive part of the whole methodology.</p>
+<p><strong>Tool.</strong> A small Python module. <code>numpy</code> for the bootstrap. Do not let an LLM compute these — it is precisely the wrong tool and a student watching a model do arithmetic on its own reliability learns the wrong lesson.</p>
+<p><strong>Exit criterion.</strong> For every judge in the suite: TPR, TNR, θ̂, and a CI, all on file. A judge without these numbers is not a metric, it's a vibe with a JSON schema.</p>
+<p><strong>Anti-patterns.</strong></p>
+<ul>
+<li>Shipping a judge without TPR/TNR. Extremely common. The judge becomes a permanent unvalidated dependency.</li>
+<li>Reporting <code>p_obs</code> as if it were the failure rate.</li>
+<li>Iterating on the test set. See step 9.</li>
+<li>Reporting a point estimate with no interval, then celebrating a 2pp improvement that sits well inside the noise.</li>
+</ul>
+<hr/>
+<h2 class="step-heading" id="step-11-improve"><span class="step-badge">11</span><span>Improve</span></h2>
+<p><strong>Purpose.</strong> Actually fix the thing. Ordered from cheapest to most expensive — work down the list, don't skip to the bottom.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Tactic</th>
+<th>When</th>
+<th>Example (F1, wrong policy variant)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Prompt refinement</strong></td>
+<td>The spec rule wasn't stated, or was stated ambiguously</td>
+<td>Add explicit instruction to include SKU category in the retrieval query</td>
+</tr>
+<tr>
+<td><strong>Few-shot calibration</strong></td>
+<td>The rule is stated but the model doesn't apply it consistently</td>
+<td>Add 2 examples of category-scoped retrieval, including one near-miss</td>
+</tr>
+<tr>
+<td><strong>Retrieval / index fix</strong></td>
+<td>It's a data problem, not a model problem</td>
+<td>Scope the index by category and version; deprecate superseded docs; add category to the embedding text</td>
+</tr>
+<tr>
+<td><strong>Task decomposition</strong></td>
+<td>One call is doing too much</td>
+<td>Split into: (1) classify SKU category, (2) retrieve within category, (3) compose. Each step becomes independently evaluable</td>
+</tr>
+<tr>
+<td><strong>Tool / guardrail</strong></td>
+<td>The failure is mechanically preventable</td>
+<td>Refuse the refund tool call if <code>order_id</code> not in conversation</td>
+</tr>
+<tr>
+<td><strong>Fine-tuning</strong></td>
+<td>Everything above is exhausted and you have volume</td>
+<td>Rarely the first answer, occasionally the right one</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Decomposition deserves emphasis</strong> because it's under-used. It's the tactic that most reliably works when prompt-tweaking has plateaued, and it has a second benefit: each sub-step gets its own eval, so your next round of error analysis is sharper.</p>
+<p><strong>Exit criterion.</strong> Re-run the eval suite on the golden set. Confirm the target failure mode's corrected rate moved <em>and</em> that the confidence intervals don't overlap. Confirm no other mode regressed.</p>
+<p><strong>Anti-pattern.</strong> Changing five things at once. You'll have no idea which one worked, and one of them probably made something else worse.</p>
+<hr/>
+<h2 class="step-heading" id="step-12-ci-gate-and-online-monitoring"><span class="step-badge">12</span><span>CI gate and online monitoring</span></h2>
+<p>These are two different jobs and conflating them is a common design error.</p>
+<h3 id="ci-catching-known-unknowns">CI — catching known unknowns</h3>
+<p><strong>Purpose.</strong> Prevent regression on failures you've already characterized.</p>
+<p><strong>Method.</strong></p>
+<ul>
+<li><strong>Golden dataset:</strong> the human-labeled traces from your error analysis, promoted to fixtures. These are cases you <em>know</em> the correct behavior for.</li>
+<li><strong>Pin the model version.</strong> Otherwise a provider-side model update looks identical to a regression in your code, and you'll spend a day chasing it.</li>
+<li>Run all code evals + all validated judges.</li>
+<li>Fail the build on regression beyond a threshold.</li>
+<li>Run on every PR that touches prompts, retrieval config, or tool definitions.</li>
+</ul>
+<p><strong>Threshold setting.</strong> Don't gate on "no failures" — you'll have a permanently red build. Gate on <em>regression relative to the current baseline</em>, with a margin wider than your CI half-width. If your interval is ±6pp, a 3pp threshold will fire on noise constantly and the team will start ignoring it, which is worse than no gate.</p>
+<p><strong>Tool.</strong> GitHub Actions + pytest, or promptfoo's CI mode, or Braintrust's SDK which runs locally against the golden set and pushes results.</p>
+<h3 id="cd-catching-unknown-unknowns">CD — catching unknown unknowns</h3>
+<p><strong>Purpose.</strong> Find failure modes that don't exist in your golden set because you've never seen them.</p>
+<p><strong>Method.</strong></p>
+<ul>
+<li><strong>Sample production traffic</strong> — random plus stratified on dimensions where you have low volume.</li>
+<li><strong>Run judges asynchronously.</strong> Don't put an LLM judge in the request path.</li>
+<li><strong>Guardrails are different.</strong> A guardrail is a blocking, synchronous, cheap check for catastrophic outputs (PII leakage, another customer's order details). It's code, it's in-path, and it's not an eval. Keep the two concepts separate — students conflate them constantly.</li>
+<li><strong>Route sampled traces back to step 4.</strong> This is the loop closing. Production sampling is your error-analysis input for round two.</li>
+</ul>
+<p><strong>Smart sampling.</strong> Once you have a validated judge, prioritize traces where the judge is uncertain or where it disagrees with a cheap heuristic — you learn more per annotation. This is active learning applied to error analysis, and it substantially reduces the annotation cost of round two onward.</p>
+<p><strong>Exit criterion.</strong> CI is green and meaningful; production traces flow back into the annotation queue on a cadence.</p>
+<hr/>
+<h2 class="step-heading" id="step-13-close-the-loop"><span class="step-badge">13</span><span>Close the loop</span></h2>
+<p>After improving, <strong>go back to step 3, not forward to a dashboard.</strong></p>
+<p>The distribution of failures has changed. Fixing F1 (18 traces) may have surfaced a mode that was previously masked — traces that failed at retrieval never got far enough to reveal a downstream composition bug. Round two will find things round one couldn't.</p>
+<p>Practically: re-sample traces (now including production), re-run open coding on a smaller batch (30–50 is usually enough once you have a taxonomy), and check whether new codes appear or the existing taxonomy absorbs everything.</p>
+<p><strong>Cadence.</strong> Initial setup is a real investment — call it two to three weeks for a team new to this. Steady state is roughly <strong>30 minutes a week</strong> of trace review, plus a deeper pass whenever you make a significant change to the system. That ratio is the thing to quote when someone asks about the ongoing cost.</p>
+<hr/>
+<h2 class="step-heading" id="step-14-cost-and-latency-optimization"><span class="step-badge">14</span><span>Cost and latency optimization</span></h2>
+<p><strong>Purpose.</strong> Reduce cost without giving back accuracy. <strong>Gated on accuracy being acceptable</strong> — optimizing an agent that fails 18% of the time is optimizing the wrong thing.</p>
+<p><strong>Tactics.</strong></p>
+<p><strong>KV-cache-friendly prompt ordering.</strong> Put everything static first — system instructions, tool definitions, few-shots, policy boilerplate — and everything dynamic last. Cache hits require an exact prefix match, so a single dynamic token near the top (a timestamp, a session ID) invalidates the entire cache for that request. This is often the single largest cost win available and it requires no accuracy trade-off at all.</p>
+<p><strong>Model cascades.</strong> Route to a cheap model first; escalate to the expensive one when confidence is low. Measure confidence via token log probabilities on the decisive output, tune the threshold <em>T</em> against your labeled set, and pick <em>T</em> by the accuracy-vs-cost curve rather than by intuition.</p>
+<p>The accept criterion matters: <strong>compare confidence intervals, not point estimates.</strong> If the cascade's corrected accuracy CI overlaps the baseline's, you kept accuracy and saved money. If it doesn't overlap and is lower, you traded accuracy for cost — which may still be the right call, but it should be a decision, not an accident.</p>
+<p><strong>Task decomposition</strong> cuts both ways — more calls, but each on a shorter prompt with a smaller model. Usually a net win, and it improves evaluability.</p>
+<p><strong>Prompt compression.</strong> Real gains, but measure. Compressed prompts frequently drop the exact edge-case instruction that was fixing your third-priority failure mode.</p>
+<p><strong>Tool.</strong> Your own harness plus cost data from the trace metadata. Every platform tracks per-trace cost; that's most of what you need.</p>
+<hr/>
+<h1 class="part-heading" id="part-iii-specialized-tracks">Part III — Specialized tracks</h1>
+<h2 id="rag-evaluate-retrieval-separately-from-generation">RAG: evaluate retrieval separately from generation</h2>
+<p>The single most important structural point: <strong>a bad answer from good retrieval and a good-looking answer from bad retrieval require completely different fixes</strong>, and end-to-end scoring cannot distinguish them.</p>
+<p><strong>Retrieval evaluation.</strong></p>
+<p>Build an adversarial retrieval set — not random queries, but queries designed to break the retriever:</p>
+<ul>
+<li><strong>Near-miss distractors</strong> — the corpus contains <code>POL-RETURN-GENERAL-v3</code> and <code>POL-RETURN-COSMETICS-v1</code>; the query is about opened cosmetics but never uses the word "cosmetics"</li>
+<li><strong>Version confusion</strong> — v2 and v3 of the same policy both in the index</li>
+<li><strong>Negation</strong> — "items that are <em>not</em> eligible for free return"</li>
+<li><strong>Multi-hop</strong> — answer requires two documents</li>
+<li><strong>Entity confusion</strong> — two SKUs with similar names</li>
+</ul>
+<p>Metrics (compute in code, never with a judge):</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What it answers</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Recall@k</strong></td>
+<td>Is the right doc anywhere in the top k?</td>
+<td>The primary metric — if it's not retrieved, generation cannot recover</td>
+</tr>
+<tr>
+<td><strong>MRR</strong></td>
+<td>How high is the <em>first</em> relevant doc?</td>
+<td>When one right answer exists</td>
+</tr>
+<tr>
+<td><strong>NDCG@k</strong></td>
+<td>Is the whole ranking good, with graded relevance?</td>
+<td>When several docs are relevant to differing degrees</td>
+</tr>
+</tbody>
+</table></div>
+<p>Practical note: with a generous context window, Recall@10 matters far more than precise ranking. Don't over-invest in NDCG optimization if the generator sees all ten anyway.</p>
+<p><strong>Generation evaluation</strong>, given retrieval: faithfulness (does every claim trace to a retrieved doc?), completeness, and correct handling of "the answer isn't in the context."</p>
+<h2 id="agents-evaluate-the-trajectory-not-the-destination">Agents: evaluate the trajectory, not the destination</h2>
+<p>Agents evaluated only on final output pass substantially more cases than trajectory-level evaluation reveals. The failure surface is at the step level.</p>
+<p><strong>Three separable code-based checks:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Question</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tool selection</strong></td>
+<td>Was this the right tool?</td>
+<td>Compare against expected tool for the intent class</td>
+</tr>
+<tr>
+<td><strong>Argument validity</strong></td>
+<td>Are the arguments well-formed and grounded?</td>
+<td>JSON schema + set membership against conversation entities</td>
+</tr>
+<tr>
+<td><strong>Execution success</strong></td>
+<td>Did the call succeed?</td>
+<td>Status code from the tool result</td>
+</tr>
+</tbody>
+</table></div>
+<p>All three are code. None needs a judge.</p>
+<p><strong>Transition failure matrix.</strong> Model the agent as states — <code>understand → lookup_order → retrieve_policy → decide → compose → respond</code> — and for each failed trace, record the state where it <em>first</em> diverged. Aggregate into a matrix:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>From → To</th>
+<th>lookup</th>
+<th>retrieve</th>
+<th>decide</th>
+<th>compose</th>
+<th>respond</th>
+<th>FAIL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>understand</td>
+<td>82</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td><strong>18</strong></td>
+</tr>
+<tr>
+<td>lookup</td>
+<td>—</td>
+<td>79</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>3</td>
+</tr>
+<tr>
+<td>retrieve</td>
+<td>—</td>
+<td>—</td>
+<td>61</td>
+<td>—</td>
+<td>—</td>
+<td><strong>18</strong></td>
+</tr>
+<tr>
+<td>decide</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>58</td>
+<td>—</td>
+<td>3</td>
+</tr>
+<tr>
+<td>compose</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>55</td>
+<td>3</td>
+</tr>
+</tbody>
+</table></div>
+<p>18 failures at <code>retrieve</code> is your F1. Concentration in one cell is exactly what you want to see — it localizes the bug. Failures spread evenly across all transitions usually means your state model is too coarse to be useful.</p>
+<h2 id="multi-turn-isolate-before-you-diagnose">Multi-turn: isolate before you diagnose</h2>
+<p>Multi-turn bugs are miserable to debug because you can't tell whether the agent failed at turn 4 because of turn 4's input or because of what it carried from turn 1.</p>
+<p>Two techniques:</p>
+<p><strong>Single-turn reproduction.</strong> Take the failing turn's full context and replay it as a single-turn request. If it still fails, it's a retrieval or grounding bug at that turn — much easier to work with. If it succeeds, the failure is genuinely about accumulated state.</p>
+<p><strong>N−1 replay.</strong> Truncate the conversation to turns 1..N−1 and re-run turn N. Vary what you include. If dropping turns 2–3 fixes it, you have a context-length or attention-dilution problem. If including turn 1 is necessary and the agent still fails, it's a constraint-tracking problem — which points at decomposition or explicit state extraction rather than prompt tweaking.</p>
+<p><strong>Scoping.</strong> Decide the unit of evaluation up front and be consistent: turn-level (each response independently), session-level (did the customer's problem get resolved), or both. Mixing them silently is a frequent source of confusing numbers.</p>
+<hr/>
+<h1 class="part-heading" id="part-iv-the-math-worked">Part IV — The math, worked</h1>
+<p>These three examples are the most convincing material in the whole curriculum. Teach them with the arithmetic on screen.</p>
+<h2 id="1-why-percent-agreement-lies-cohens">1. Why percent agreement lies — Cohen's κ</h2>
+<p>Two annotators label 100 traces for F3:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>B says FAIL</th>
+<th>B says PASS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A says FAIL</strong></td>
+<td>20</td>
+<td>10</td>
+</tr>
+<tr>
+<td><strong>A says PASS</strong></td>
+<td>10</td>
+<td>60</td>
+</tr>
+</tbody>
+</table></div>
+<p>Observed agreement: (20 + 60) / 100 = <strong>0.80</strong>. Sounds good.</p>
+<p>Expected by chance: A says FAIL 30% of the time, B says FAIL 30%. A says PASS 70%, B says PASS 70%.</p>
+<p>p_e = (0.30 × 0.30) + (0.70 × 0.70) = 0.09 + 0.49 = <strong>0.58</strong></p>
+<p>κ = (0.80 − 0.58) / (1 − 0.58) = 0.22 / 0.42 = <strong>0.52</strong></p>
+<p>Below the 0.6 threshold. Your annotators look like they agree, and they don't — most of that 80% is two people independently guessing "pass" on an easy majority class. <strong>Go rewrite the definition of F3.</strong> Almost always the fix is that the definition has an unstated boundary case, and once you name it, κ jumps.</p>
+<h2 id="2-why-the-raw-judge-score-is-wrong-bias-correction">2. Why the raw judge score is wrong — bias correction</h2>
+<p><strong>Case A — a decent judge.</strong> Test set: TPR = 0.90, TNR = 0.85. Judge run on 2,000 unlabeled traces: 72% pass, so <code>p_obs = 0.72</code>.</p>
+<div class="formula"><code>\hat{\theta} = \frac{0.72 + 0.85 - 1}{0.90 + 0.85 - 1} = \frac{0.57}{0.75} = \mathbf{0.76}</code></div>
+<p>True pass rate is 76%, not 72%. A 4-point understatement — because this judge fails more genuinely-good responses than it passes bad ones.</p>
+<p><strong>Case B — a lenient judge.</strong> TPR = 0.95, TNR = 0.40. It catches almost every real failure but flags lots of good responses as failures... no, the opposite: low TNR means it <em>passes</em> things it shouldn't. <code>p_obs = 0.80</code>.</p>
+<div class="formula"><code>\hat{\theta} = \frac{0.80 + 0.40 - 1}{0.95 + 0.40 - 1} = \frac{0.20}{0.35} = \mathbf{0.57}</code></div>
+<p><strong>Your reported 80% is actually 57%.</strong> A 23-point overstatement. This is the number to put on a slide. Teams ship judges like this constantly, because a judge that says "pass" most of the time looks like a system that works.</p>
+<p><strong>The degenerate case.</strong> If TPR + TNR ≤ 1, the denominator is zero or negative and θ̂ is undefined or nonsensical. That condition means your judge is at or below chance. Your code must raise an error here, not return a number — otherwise you'll silently publish garbage. Students should see this fail loudly at least once.</p>
+<h2 id="3-why-you-need-the-interval-and-how-correction-widens-it">3. Why you need the interval — and how correction widens it</h2>
+<p>The correction divides by (TPR + TNR − 1), which is less than 1. So it scales the <em>uncertainty</em> by 1/(TPR + TNR − 1) as well.</p>
+<p>Rough half-width of the 95% interval:</p>
+<div class="formula"><code>\text{half-width} \approx \frac{1.96\sqrt{p(1-p)/n}}{TPR + TNR - 1}</code></div>
+<p>With p ≈ 0.75 and TPR + TNR − 1 = 0.75:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>n (test set)</th>
+<th>Half-width</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100</td>
+<td><strong>±11.3 pp</strong></td>
+</tr>
+<tr>
+<td>200</td>
+<td>±8.0 pp</td>
+</tr>
+<tr>
+<td>400</td>
+<td>±5.7 pp</td>
+</tr>
+<tr>
+<td>1000</td>
+<td>±3.6 pp</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>The lesson:</strong> with a 100-trace test set you cannot detect a 5-point regression. If your CI gate threshold is 3pp and your interval is ±11pp, the gate is decorative and will fire randomly.</p>
+<p>Two implications students should take away:</p>
+<ol>
+<li><strong>Sample size is a design decision, not an afterthought.</strong> Decide what regression size you need to detect, then size the test set for it.</li>
+<li><strong>A better judge buys you a tighter interval for free.</strong> Improving TPR + TNR − 1 from 0.60 to 0.80 shrinks the interval by 25% at the same n — often cheaper than labeling 200 more traces.</li>
+</ol>
+<p>Use the bootstrap for the actual number, not this formula — the formula is for teaching the intuition. The bootstrap resamples the test set, recomputes TPR/TNR <em>and</em> θ̂ on each draw, and takes percentiles, which correctly propagates uncertainty in the judge's own error rates.</p>
+<hr/>
+<h1 class="part-heading" id="part-v-tooling">Part V — Tooling</h1>
+<h2 id="by-function">By function</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Recommended</th>
+<th>Alternatives</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spec</td>
+<td>Markdown in repo</td>
+<td>—</td>
+<td>Don't overthink</td>
+</tr>
+<tr>
+<td>Query generation</td>
+<td>Own script + any model</td>
+<td>Platform dataset objects</td>
+<td>Never use auto-generate</td>
+</tr>
+<tr>
+<td>Tracing</td>
+<td><strong>Langfuse</strong> (MIT, self-host)</td>
+<td>Phoenix, LangSmith, Braintrust, Opik</td>
+<td>LangSmith only if LangChain-native</td>
+</tr>
+<tr>
+<td>Annotation</td>
+<td><strong>Build your own viewer</strong></td>
+<td>LangSmith annotation queues</td>
+<td>Friction here directly costs you traces reviewed</td>
+</tr>
+<tr>
+<td>Axial coding</td>
+<td>LLM + YAML in repo</td>
+<td>—</td>
+<td>Human reviews the clustering</td>
+</tr>
+<tr>
+<td>Code evals</td>
+<td>pytest</td>
+<td>promptfoo, DeepEval</td>
+<td>Keep them plain</td>
+</tr>
+<tr>
+<td>Judges</td>
+<td>Prompt files in repo</td>
+<td>Platform scorers</td>
+<td>Version-control the prompts</td>
+</tr>
+<tr>
+<td>Statistics</td>
+<td>numpy / sklearn</td>
+<td>—</td>
+<td><strong>Never</strong> an LLM</td>
+</tr>
+<tr>
+<td>Retrieval metrics</td>
+<td>own <code>ir_metrics.py</code></td>
+<td>Ragas, Phoenix</td>
+<td>Trivial to implement, worth doing once</td>
+</tr>
+<tr>
+<td>CI</td>
+<td>GitHub Actions + pytest</td>
+<td>promptfoo CI, Braintrust SDK</td>
+<td>Pin the model version</td>
+</tr>
+<tr>
+<td>Monitoring</td>
+<td>Langfuse / Phoenix</td>
+<td>Arize AX, Datadog LLM</td>
+<td>Async, out of request path</td>
+</tr>
+<tr>
+<td>Guardrails</td>
+<td>Own code, in-path</td>
+<td>—</td>
+<td>Not an eval — different concept</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="two-tool-pattern">Two-tool pattern</h2>
+<p>The common steady state is a <strong>lightweight CI framework</strong> (promptfoo / DeepEval / pytest) plus a <strong>platform</strong> for annotation, regression tracking, and stakeholder-visible dashboards (Langfuse / Braintrust / LangSmith). Trying to make one tool do both usually means compromising the part that matters most to you.</p>
+<h2 id="for-a-teaching-repo-specifically">For a teaching repo specifically</h2>
+<p>Use <strong>JSONL files and Python</strong> for everything except tracing. Students who learn the process inside a vendor UI learn the UI, not the process — and they can't see that a judge is just a prompt and a confusion matrix. Introduce the platform in the last module, once the mechanics are internalized.</p>
+<hr/>
+<h1 class="part-heading" id="part-vi-operating-model">Part VI — Operating model</h1>
+<p><strong>Who does what.</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Owns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Domain expert</strong> (the "benevolent dictator")</td>
+<td>The spec, open coding, ground-truth labels, the final call on whether something is a failure</td>
+</tr>
+<tr>
+<td><strong>Engineer</strong></td>
+<td>Tracing, evaluator code, judge implementation, CI, the statistics</td>
+</tr>
+<tr>
+<td><strong>PM</strong></td>
+<td>Prioritization inputs (severity), stakeholder communication</td>
+</tr>
+</tbody>
+</table></div>
+<p>The critical staffing point: <strong>one person owns the labels.</strong> Evals fail most often not from bad tooling but from criteria fragmenting across three people who each mean something slightly different by "failure."</p>
+<p><strong>Time budget (team new to this).</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>First time</th>
+<th>Steady state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spec</td>
+<td>0.5 day</td>
+<td>Revised as needed</td>
+</tr>
+<tr>
+<td>Dimensions + generation</td>
+<td>0.5 day</td>
+<td>1 hour when adding a surface</td>
+</tr>
+<tr>
+<td>Tracing setup</td>
+<td>1–2 days</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Annotation viewer</td>
+<td>0.5 day</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Open + axial coding, 100 traces</td>
+<td>2–3 days</td>
+<td>30 min/week</td>
+</tr>
+<tr>
+<td>Evaluator build (per mode)</td>
+<td>0.5–1 day</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Labeling + judge alignment (per judge)</td>
+<td>1–2 days</td>
+<td>Revalidate on model change</td>
+</tr>
+<tr>
+<td>CI setup</td>
+<td>1 day</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~2–3 weeks</strong></td>
+<td><strong>~30 min/week + deeper pass per change</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Budget share.</strong> A reasonable rule of thumb is that evals should take a meaningful slice of the development budget — not a token 5%. If the team is spending nothing on evals, they're spending it on debugging in production instead.</p>
+<p><strong>Explaining it upward.</strong> Three sentences that work:</p>
+<ol>
+<li>"We reviewed 100 representative conversations by hand and categorized every failure."</li>
+<li>"18% fail from one specific cause, concentrated in one customer segment; here's the fix and here's what we'll measure."</li>
+<li>"Our automated grader agrees with human judgment 90% of the time on failures and 85% on passes; the corrected pass rate is 76% ± 6."</li>
+</ol>
+<p>That third sentence is what separates a team that has evals from a team that has a dashboard.</p>
+<hr/>
+<h1 class="part-heading" id="part-vii-anti-pattern-catalogue">Part VII — Anti-pattern catalogue</h1>
+<p>Give students this list and have them audit their own work against it.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Anti-pattern</th>
+<th>Why it's fatal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Writing metrics before error analysis</td>
+<td>You measure what you imagined, not what breaks</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Generic judges (helpfulness, quality, coherence)</td>
+<td>Pass every real bug; you'll trust them and be wrong</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1–5 Likert scoring</td>
+<td>Unstable, unactionable, unvalidatable</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Predefined failure categories</td>
+<td>Deductive coding with extra steps</td>
+</tr>
+<tr>
+<td>5</td>
+<td>LLM does the open coding</td>
+<td>Confidently misses every nuance</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Labeling only the final answer</td>
+<td>Misses upstream causes; inflates taxonomy with symptoms</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Not enforcing first-failure-only</td>
+<td>Same, plus wrong frequency counts</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Multiple annotators before the criterion is defined</td>
+<td>Fragmented vocabulary, three taxonomies</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Percent agreement instead of κ</td>
+<td>85% agreement can mean κ = 0.3</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Shipping a judge without TPR/TNR</td>
+<td>It's a vibe with a schema</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Reporting raw pass rate</td>
+<td>Off by up to 20+ points</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Iterating on the test set</td>
+<td>Optimistic bias in everything downstream</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Point estimates, no intervals</td>
+<td>You'll celebrate noise</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Test set too small for the effect size</td>
+<td>Gate is decorative</td>
+</tr>
+<tr>
+<td>15</td>
+<td>LLM judge for a code-checkable criterion</td>
+<td>Slow, costly, less reliable, needs validation</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Evaluating RAG end-to-end only</td>
+<td>Cannot distinguish retrieval bugs from generation bugs</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Not pinning the model version in CI</td>
+<td>Provider updates look like your regressions</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Guardrails and evals conflated</td>
+<td>One is synchronous and blocking, one is async and diagnostic</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Loop terminates after "metrics improved"</td>
+<td>Failure distribution shifted; you're now blind again</td>
+</tr>
+<tr>
+<td>20</td>
+<td>Cost optimization before accuracy is acceptable</td>
+<td>Optimizing the wrong thing, cheaply</td>
+</tr>
+<tr>
+<td>21</td>
+<td>Changing five things at once</td>
+<td>No attribution</td>
+</tr>
+<tr>
+<td>22</td>
+<td>LLM computing its own statistics</td>
+<td>The exact failure the methodology exists to prevent</td>
+</tr>
+</tbody>
+</table></div>
+<hr/>
+<h1 id="appendix-one-page-summary">Appendix — One-page summary</h1>
+<pre><code> 1. SPEC          must-always / must-never, each tied to a real scenario
+ 2. DIMENSIONS    3-4 dims → tuples → 1 query per tuple → keep tuple as metadata
+ 3. TRACES        full trajectory: tools, args, retrievals, scores, intermediate state
+ 4. OPEN CODE     ~100 traces, ONE annotator, freeform notes, FIRST failure only,
+                  binary, stop at saturation
+ 5. AXIAL CODE    LLM clusters → human reviews → taxonomy with counts
+                  → cross-tab by dimension
+ 6. PRIORITIZE    frequency × severity × fixability → ranked backlog
+ ─────────────────── no metric may be written above this line ───────────────────
+ 7. ROUTE         code if checkable; judge only for interpretive. Split hybrid modes.
+                  Target 2-3 code : 1-2 judges
+ 8. JUDGE         one per mode, BINARY, critique-then-label, few-shots from train only
+ 9. LABEL         train 20 / dev 40 / test 40, stratified. κ ≥ 0.6. LOCK TEST.
+10. ALIGN         iterate on dev → measure TPR/TNR on test ONCE
+                  → θ̂ = (p_obs + TNR − 1)/(TPR + TNR − 1) → bootstrap CI
+11. IMPROVE       prompt → few-shot → retrieval/index → decomposition → tool → fine-tune
+12. GATE          CI: golden set, pinned model, regression threshold &gt; CI width
+                  CD: sampled traffic, async judges, in-path guardrails
+13. LOOP          back to 3, not forward to a dashboard
+14. OPTIMIZE      only once accurate. KV-cache ordering → cascade → compression.
+                  Accept on CI overlap, not point estimates.
+
+</code></pre>
+</article>
+    <div class="footer-note">Built from the supplied AI Eval Process playbook. All source sections and examples are retained; presentation and navigation are enhanced.</div>
+  </main>
+</div>
+<button class="backtop" onclick="scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
+<script>
+const progress=document.querySelector('.topbar');
+const back=document.querySelector('.backtop');
+const links=[...document.querySelectorAll('.toc a')];
+const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+function onScroll(){
+ const h=document.documentElement.scrollHeight-innerHeight; const p=h?scrollY/h:0; progress.style.transform=`scaleX(${p})`;
+ back.classList.toggle('show',scrollY>650);
+ let current=''; for(const s of sections){if(s.getBoundingClientRect().top<160) current=s.id;}
+ links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+current));
+}
+addEventListener('scroll',onScroll,{passive:true});onScroll();
+</script>
+</body></html>
