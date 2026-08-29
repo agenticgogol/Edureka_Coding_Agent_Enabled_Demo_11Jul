@@ -17,3 +17,6 @@ teaching/langgraph_basics/mem0_chroma_store/
 # incident-root-cause-agent runtime artifacts (regenerated on run/seed)
 teaching/incident-root-cause-agent/data/db/
 teaching/incident-root-cause-agent/data/jira/
+
+.venv/
+.venv-*/
