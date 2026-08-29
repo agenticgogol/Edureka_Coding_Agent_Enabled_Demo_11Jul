@@ -1,0 +1,1 @@
+import{a as e,i as t,n,o as r,r as i,t as a}from"./vendor-CMrSZury.js";export{a as colors,i as default,n as name,t as semanticTokenColors,e as tokenColors,r as type};

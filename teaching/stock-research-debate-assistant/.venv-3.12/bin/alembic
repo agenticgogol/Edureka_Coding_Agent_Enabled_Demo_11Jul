@@ -1,0 +1,6 @@
+#!/Users/utsabchakraborty/Documents/Edureka_Full_Course/Live_Class_Codes/Coding_Agent_Enabled_Demo/teaching/stock-research-debate-assistant/.venv-3.12/bin/python
+import sys
+from alembic.config import main
+if __name__ == '__main__':
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(main())
