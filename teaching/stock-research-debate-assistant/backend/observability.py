@@ -19,6 +19,7 @@ context manager so `main.py` doesn't need to know which tier is active.
 """
 from __future__ import annotations
 
+import contextvars
 import json
 import os
 import time
@@ -30,6 +31,81 @@ from typing import Any, Iterator
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Per-turn LLM usage accumulator. Set to a fresh list by `traced_chat_call`
+# at the start of each `/chat`-style request, appended to by
+# `record_llm_usage` (called from `agent/llm_client.py` right after every
+# real provider response comes back), and read back out into
+# `attrs["usage"]` when the request context manager exits. A ContextVar
+# rather than a module-level list because `/chat/start` runs each turn on
+# its own background thread — a brand-new thread gets its own empty
+# Context, so concurrent turns never see each other's usage entries.
+_USAGE_CTX: contextvars.ContextVar[list[dict[str, Any]] | None] = contextvars.ContextVar(
+    "usage_ctx", default=None
+)
+
+# Approximate published per-1K-token USD pricing, (input_rate, output_rate).
+# These are intentionally rough — good enough for "roughly how much did this
+# turn cost" visibility in a teaching demo, not a billing-grade figure.
+# Update here if a model's list price changes; unknown models fall back to
+# the provider's "default" entry.
+_COST_PER_1K_TOKENS_USD: dict[str, dict[str, tuple[float, float]]] = {
+    "anthropic": {
+        "claude-3-5-sonnet-20241022": (0.003, 0.015),
+        "claude-3-5-haiku-20241022": (0.0008, 0.004),
+        "claude-3-haiku-20240307": (0.00025, 0.00125),
+        "default": (0.003, 0.015),
+    },
+    "openai": {
+        "gpt-4o": (0.0025, 0.01),
+        "gpt-4o-mini": (0.00015, 0.0006),
+        "default": (0.0025, 0.01),
+    },
+    "groq": {
+        # Groq's Llama/Mixtral hosting is priced far below Anthropic/OpenAI;
+        # this default approximates their published Llama-3.1-70b rate.
+        "default": (0.00059, 0.00079),
+    },
+}
+
+
+def estimate_cost_usd(provider: str, model: str | None, tokens_in: int, tokens_out: int) -> float:
+    """Best-effort USD cost estimate for one LLM call. See
+    `_COST_PER_1K_TOKENS_USD`'s docstring note above: approximate, not
+    billing-grade."""
+    table = _COST_PER_1K_TOKENS_USD.get(provider, {})
+    in_rate, out_rate = table.get(model or "", table.get("default", (0.0, 0.0)))
+    return (tokens_in / 1000.0) * in_rate + (tokens_out / 1000.0) * out_rate
+
+
+def record_llm_usage(
+    *,
+    node: str | None,
+    provider: str,
+    model: str,
+    tokens_in: int,
+    tokens_out: int,
+    latency_seconds: float,
+) -> None:
+    """Called by `agent/llm_client.py` right after every real provider
+    response, so the current request's usage list (if any) gets one entry
+    per LLM call: node name, tokens in/out, latency, estimated cost.
+    No-ops outside of a `traced_chat_call` context (e.g. `verify_key()` at
+    startup), since there's no per-turn usage list to append to then."""
+    usage_list = _USAGE_CTX.get()
+    if usage_list is None:
+        return
+    usage_list.append(
+        {
+            "node": node,
+            "provider": provider,
+            "model": model,
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "latency_seconds": round(latency_seconds, 3),
+            "estimated_cost_usd": round(estimate_cost_usd(provider, model, tokens_in, tokens_out), 6),
+        }
+    )
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,7 +173,9 @@ def traced_chat_call(session_id: str, user_message: str) -> Iterator[dict[str, A
         "trail_events": [],
         "stance": None,
         "error": None,
+        "usage": [],
     }
+    usage_token = _USAGE_CTX.set([])
 
     if _tracer is not None:
         with _tracer.start_as_current_span("chat_turn") as otel_span:
@@ -111,12 +189,15 @@ def traced_chat_call(session_id: str, user_message: str) -> Iterator[dict[str, A
                 raise
             finally:
                 attrs["latency_seconds"] = time.time() - start
+                attrs["usage"] = _USAGE_CTX.get() or []
+                _USAGE_CTX.reset(usage_token)
                 otel_span.set_attribute("latency_seconds", attrs["latency_seconds"])
                 otel_span.set_attribute("output.value", str(attrs.get("final_answer", "")))
                 otel_span.set_attribute("stance", str(attrs.get("stance")))
                 otel_span.set_attribute(
                     "trail_events_json", json.dumps(attrs.get("trail_events", []), default=str)
                 )
+                otel_span.set_attribute("usage_json", json.dumps(attrs["usage"], default=str))
     else:
         try:
             yield attrs
@@ -125,6 +206,8 @@ def traced_chat_call(session_id: str, user_message: str) -> Iterator[dict[str, A
             raise
         finally:
             attrs["latency_seconds"] = time.time() - start
+            attrs["usage"] = _USAGE_CTX.get() or []
+            _USAGE_CTX.reset(usage_token)
             _write_json_span(attrs)
 
 

@@ -32,9 +32,18 @@ TurnType = Literal[
     "allocation_compare",
     "allocation_drill_down",
     "out_of_scope",
+    "quick_summary",
+    "critique",
+    "price_move_explain",
+    "scenario_simulator",
+    "news_materiality",
+    "reverse_dcf",
+    "portfolio_stress_test",
 ]
 
 ToolName = Literal["price_fundamentals", "news", "fx"]
+
+CritiqueMode = Literal["top_reasons", "red_team", "stress_test", "bias_check"]
 
 
 def _merge_dicts(a: dict, b: dict) -> dict:
@@ -94,21 +103,43 @@ class GraphState(TypedDict, total=False):
     allocation_currency: str | None
     allocation_target_return: float | None
     allocation_question: str | None
+    critique_mode: "CritiqueMode | None"
+    shock_ticker: str | None
+    shock_return_shift: float
+    shock_correlation_to_one: bool
 
     # Task state carried across turns
     fetched_data: Annotated[dict, _merge_dicts]
     fx_data: Annotated[dict, _merge_dicts]
     risk_tolerance: str | None
+    risk_profile_changed: bool
     refinements: dict
     allocation_output: dict
+
+    # Adaptive debate depth (Milestone 1 extension, see graph.py's
+    # `_route_after_judge` and nodes/debate.py's `run_extra_round`): set to
+    # True once the one allowed extra bull/bear round has run, so the
+    # judge->debate_extra_round loop can fire at most once per turn (caps
+    # total rounds at ROUNDS + 1 = 3).
+    debate_extended: bool
 
     # Debate + synthesis
     transcript: Annotated[list[TranscriptTurn], operator.add]
     final_answer: str
     stance: Literal["Buy", "Sell", "Hold"] | None
+    # Judge-estimated bull/bear agreement score, 0.0 (strong conflict) to
+    # 1.0 (strong agreement); None for allocation turns (no bull/bear debate).
+    confidence: float | None
 
     # Reasoning trail (ordered, discrete step events for the frontend)
     trail: Annotated[list[TrailEvent], operator.add]
 
     # Long-term-memory-derived context surfaced this turn (read-only note)
     memory_note: str | None
+
+    # Prior-session memory actually fed into this turn's debate prompts
+    # (not just the display-only `memory_note` above). Set once per turn by
+    # orchestrator.route() once tickers are resolved, read by
+    # debate._format_fetched_data / run_debate. ticker -> past synthesis text.
+    prior_analysis_context: dict[str, str]
+    prior_allocation_context: str | None

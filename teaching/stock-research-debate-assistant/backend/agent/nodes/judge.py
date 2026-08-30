@@ -15,6 +15,17 @@ import re
 from ..llm_client import complete
 from ..state import GraphState, emit_progress
 
+# Adaptive debate depth trigger threshold (see graph.py's
+# `_route_after_judge` and nodes/debate.py's `run_extra_round`): if the
+# judge's bull/bear agreement `confidence` score is strictly below this,
+# the two sides are treated as being in sharp, unresolved conflict and the
+# graph runs one additional bull/bear rebuttal round before re-judging.
+# Capped at one extra round total (see `debate_extended` in state.py) to
+# bound cost. 0.35 was chosen as "clearly conflicting", not merely "not in
+# perfect agreement" — most real debates land above this even when bull
+# and bear disagree on emphasis.
+CONFLICT_CONFIDENCE_THRESHOLD = 0.35
+
 DISCLAIMER = (
     "This is not financial advice. It is an educational synthesis of the debate above, "
     "grounded only in the fetched data — verify independently and consider consulting a "
@@ -36,8 +47,14 @@ recommend rebalancing ranges, new percentages, or any weights different from \
 the deterministic optimizer output. The allocation output itself is the source \
 of truth for all numbers.
 
+Also estimate a confidence/agreement score between 0.0 and 1.0 for how much the \
+bull and bear cases actually agree/converge on the outcome (1.0 = they mostly agree, \
+e.g. both lean the same direction or the disagreement is minor; 0.0 = they are in \
+direct, strong conflict with no common ground). Base this only on what's actually in \
+the transcript, not on how confident you personally feel about the stance.
+
 Respond with ONLY a JSON object, no prose, no markdown fences:
-{"stance": "Buy" | "Sell" | "Hold", "reasoning": "3-6 sentences synthesizing the debate and justifying the stance"}
+{"stance": "Buy" | "Sell" | "Hold", "reasoning": "3-6 sentences synthesizing the debate and justifying the stance", "confidence": 0.0-1.0}
 """
 
 
@@ -77,11 +94,25 @@ def _allocation_explanation(output: dict) -> str:
     )
 
 
-def _extract_json(raw: str) -> dict:
+class JudgeJSONError(RuntimeError):
+    """Raised when the judge LLM's output isn't parseable JSON, even after
+    one re-prompt asking it to fix the formatting."""
+
+
+def _clean_json_text(raw: str) -> str:
     cleaned = raw.strip()
     cleaned = re.sub(r"^```(?:json)?", "", cleaned).strip()
     cleaned = re.sub(r"```$", "", cleaned).strip()
-    return json.loads(cleaned)
+    return cleaned
+
+
+def _extract_json(raw: str) -> dict:
+    """Parse the judge's JSON output, no silent fallback — see
+    `RouterJSONError`'s docstring in orchestrator.py for the same pattern."""
+    try:
+        return json.loads(_clean_json_text(raw))
+    except json.JSONDecodeError as exc:
+        raise JudgeJSONError(f"Judge output was not valid JSON: {exc}") from exc
 
 
 def run_judge(state: GraphState) -> dict:
@@ -100,10 +131,39 @@ def run_judge(state: GraphState) -> dict:
         model=state.get("model"),
         provider=state.get("provider"),
         api_key=state.get("api_key"),
+        node="judge_synthesis",
     )
-    parsed = _extract_json(raw)
+    try:
+        parsed = _extract_json(raw)
+    except JudgeJSONError:
+        emit_progress(state, "judge_synthesis", "retrying", "Judge output wasn't valid JSON, re-prompting once")
+        retry_raw = complete(
+            prompt=(
+                "Your previous response was not valid JSON and could not be parsed:\n"
+                f"{raw}\n\n"
+                "Reply again with ONLY the corrected JSON object described in your "
+                "instructions, no prose, no markdown fences."
+            ),
+            system=_SYSTEM_PROMPT,
+            model=state.get("model"),
+            provider=state.get("provider"),
+            api_key=state.get("api_key"),
+            node="judge_synthesis_retry",
+        )
+        try:
+            parsed = _extract_json(retry_raw)
+        except JudgeJSONError as exc:
+            emit_progress(state, "judge_synthesis", "error", str(exc))
+            raise JudgeJSONError(
+                f"Judge returned unparseable JSON twice in a row. Last raw output: {retry_raw!r}"
+            ) from exc
     stance = parsed.get("stance", "Hold")
     reasoning = parsed.get("reasoning", "")
+    confidence = parsed.get("confidence")
+    if not isinstance(confidence, (int, float)):
+        confidence = None
+    else:
+        confidence = max(0.0, min(1.0, float(confidence)))
     allocation_text = ""
     output = state.get("allocation_output") or {}
     if output:
@@ -143,5 +203,6 @@ def run_judge(state: GraphState) -> dict:
         "transcript": [judge_turn],
         "final_answer": final_answer,
         "stance": stance,
-        "trail": [{"step": "judge_synthesis", "ticker": None, "status": "done", "detail": f"stance={stance}"}],
+        "confidence": confidence,
+        "trail": [{"step": "judge_synthesis", "ticker": None, "status": "done", "detail": f"stance={stance}, confidence={confidence}"}],
     }

@@ -14,15 +14,28 @@ Verified live against the project's GitHub README on 2026-08-29:
     get_latest_exchange_rates, get_historical_exchange_rates,
     convert_currency_specific_date, greet)
 
-NOTE: the exact JSON argument names for `convert_currency_latest` were not
-directly enumerated in the fetched README (it documented the tool list and
-transport, not the per-tool JSON schema). This module calls it with the
-conventional `{"amount": ..., "from_currency": ..., "to_currency": ...}`
-shape; the flag if this is a real risk is called out in the parent report.
+Argument names and response schema verified directly against the installed
+`frankfurtermcp` package source (`frankfurtermcp/server.py` and
+`frankfurtermcp/model.py`, package version 0.4.0.post1) rather than a live
+call:
+  - `convert_currency_latest(ctx, amount: PositiveFloat, from_currency:
+    ISO4217, to_currency: ISO4217)` — confirms the `amount`/`from_currency`/
+    `to_currency` argument names used below are correct.
+  - The tool raises a `ValueError` server-side if `from_currency ==
+    to_currency` (case-insensitive) — this module already short-circuits
+    that case locally in `fetch_fx_rate` before calling the MCP server, so
+    that error path is never hit here.
+  - The tool's result is returned as a single `TextContent` block whose
+    `.text` is `CurrencyConversionResponse.model_dump_json()` — a JSON
+    object with keys `from_currency`, `to_currency`, `amount`,
+    `converted_amount`, `exchange_rate`, `rate_date` (ISO date string). This
+    module parses that JSON into a typed dict instead of returning the raw
+    text blob.
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 
 from mcp import ClientSession, StdioServerParameters
@@ -69,16 +82,36 @@ def fetch_fx_rate(from_currency: str, to_currency: str, amount: float = 1.0) -> 
     tickers) — the orchestrator decides whether this tool is needed.
     """
     if from_currency.upper() == to_currency.upper():
-        return {"from_currency": from_currency.upper(), "to_currency": to_currency.upper(), "rate": 1.0, "amount": amount, "converted": amount}
+        return {
+            "from_currency": from_currency.upper(),
+            "to_currency": to_currency.upper(),
+            "amount": amount,
+            "converted_amount": amount,
+            "exchange_rate": 1.0,
+            "rate_date": None,
+        }
     try:
         raw_text = asyncio.run(_convert_async(amount, from_currency, to_currency))
     except FxRateError:
         raise
     except Exception as exc:  # noqa: BLE001
         raise FxRateError(f"Frankfurter MCP call failed for {from_currency}->{to_currency}: {exc}") from exc
-    return {
-        "from_currency": from_currency.upper(),
-        "to_currency": to_currency.upper(),
-        "amount": amount,
-        "raw_result": raw_text,
-    }
+    try:
+        payload = json.loads(raw_text)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise FxRateError(
+            f"Frankfurter MCP returned unparseable JSON for {from_currency}->{to_currency}: {raw_text!r}"
+        ) from exc
+    try:
+        return {
+            "from_currency": payload["from_currency"],
+            "to_currency": payload["to_currency"],
+            "amount": payload["amount"],
+            "converted_amount": payload["converted_amount"],
+            "exchange_rate": payload["exchange_rate"],
+            "rate_date": payload["rate_date"],
+        }
+    except KeyError as exc:
+        raise FxRateError(
+            f"Frankfurter MCP response missing expected field {exc} for {from_currency}->{to_currency}: {payload}"
+        ) from exc

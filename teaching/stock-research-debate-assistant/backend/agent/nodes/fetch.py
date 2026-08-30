@@ -6,6 +6,8 @@ debate node.
 """
 from __future__ import annotations
 
+import time
+
 from ..state import GraphState, emit_progress
 from ..tools.fx_rate import FxRateError, fetch_fx_rate
 from ..tools.news_search import NewsSearchError, fetch_news
@@ -17,6 +19,7 @@ def fetch_price_node(state: GraphState) -> dict:
     emit_progress(state, "fetch_price_fundamentals", "started", "Fetching historical price and fundamentals", ticker)
     try:
         data = fetch_price_fundamentals(ticker)
+        data["fetched_at"] = time.time()
         emit_progress(state, "fetch_price_fundamentals", "done", "Price and fundamentals loaded", ticker)
         return {
             "fetched_data": {ticker: {"price_fundamentals": data}},

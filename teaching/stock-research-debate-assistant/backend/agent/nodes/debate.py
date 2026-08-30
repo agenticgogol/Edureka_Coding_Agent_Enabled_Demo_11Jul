@@ -38,15 +38,27 @@ def _format_fetched_data(state: GraphState) -> str:
             chunks.append("Price/fundamentals: (not fetched / unavailable)")
         raw_news = news.get("raw_results", "") if news else "(not fetched — question did not require news)"
         chunks.append(f"News (bounded context): {raw_news[:8000]}")
+        prior = (state.get("prior_analysis_context") or {}).get(ticker)
+        if prior:
+            chunks.append(
+                f"Prior conclusion for {ticker} from an earlier session {prior} "
+                "— revisit and update this view using the fresh data above, don't just repeat it."
+            )
     fx = state.get("fx_data")
     if fx:
         chunks.append(f"FX data: {fx}")
     if state.get("allocation_output"):
         chunks.append(f"=== DETERMINISTIC ALLOCATION OUTPUT ===\n{state['allocation_output']}")
+    prior_allocation = state.get("prior_allocation_context")
+    if prior_allocation:
+        chunks.append(
+            f"Prior allocation conclusion from an earlier session {prior_allocation} "
+            "— revisit and update this view using the fresh allocation output above, don't just repeat it."
+        )
     return "\n".join(chunks)
 
 
-def _agent_call(role: str, instructions: str, state: GraphState, extra_context: str = "") -> str:
+def _agent_call(role: str, instructions: str, state: GraphState, extra_context: str = "", node: str | None = None) -> str:
     system = (
         f"You are the {role} agent in a stock research debate. Argue strictly from the "
         "fetched data given below — never invent a number, headline, or fact that isn't "
@@ -57,7 +69,14 @@ def _agent_call(role: str, instructions: str, state: GraphState, extra_context: 
         f"{instructions}\n\nUser's question: {state['user_message']}\n\n"
         f"Fetched data:\n{_format_fetched_data(state)}\n{extra_context}"
     )
-    return complete(prompt, system=system, model=state.get("model"), provider=state.get("provider"), api_key=state.get("api_key"))
+    return complete(
+        prompt,
+        system=system,
+        model=state.get("model"),
+        provider=state.get("provider"),
+        api_key=state.get("api_key"),
+        node=node or f"debate_{role}",
+    )
 
 
 def run_debate(state: GraphState) -> dict:
@@ -101,6 +120,7 @@ def run_debate(state: GraphState) -> dict:
             "Rebut the bear's argument below directly, point by point, still grounded only in the fetched data.",
             state,
             extra_context=f"\nBear's round-1 argument to rebut:\n{bear_round1}",
+            node="debate_bull_rebuttal",
         )
         transcript.append({"role": "bull", "round": 2, "content": bull_rebuttal})
         trail.append({"step": "debate_bull_rebuttal", "ticker": None, "status": "done", "detail": bull_rebuttal[:200]})
@@ -110,11 +130,72 @@ def run_debate(state: GraphState) -> dict:
             "Rebut the bull's argument below directly, point by point, still grounded only in the fetched data.",
             state,
             extra_context=f"\nBull's round-1 argument to rebut:\n{bull_round1}",
+            node="debate_bear_rebuttal",
         )
         transcript.append({"role": "bear", "round": 2, "content": bear_rebuttal})
         trail.append({"step": "debate_bear_rebuttal", "ticker": None, "status": "done", "detail": bear_rebuttal[:200]})
 
     return {"transcript": transcript, "trail": trail}
+
+
+def run_extra_round(state: GraphState) -> dict:
+    """Adaptive debate depth (Milestone 1 extension).
+
+    Trigger (decided in `graph.py`'s `_route_after_judge`, not here): the
+    judge's first synthesis on a fresh new_analysis/topic_switch/comparison
+    turn reported a bull/bear agreement `confidence` score below
+    `judge._CONFLICT_CONFIDENCE_THRESHOLD` (sharp, unresolved conflict).
+
+    Cap: this node can run at most ONCE per turn — it sets
+    `debate_extended = True`, and `_route_after_judge` never routes back
+    here if that flag is already set, capping total debate rounds at
+    ROUNDS + 1 = 3 (matches architecture_design.md's "2-3 rounds" budget;
+    prevents runaway cost from repeated re-judging).
+
+    Runs one final bull/bear round addressing the judge's stated
+    disagreement directly, then the graph re-invokes the judge on the
+    extended transcript. Risk does not get an extra round (Milestone 1
+    scope, same as the base ROUNDS loop above).
+    """
+    transcript_so_far = state.get("transcript", [])
+    judge_turn = next((t for t in reversed(transcript_so_far) if t.get("role") == "judge"), None)
+    judge_reasoning = judge_turn["content"] if judge_turn else "(no prior judge synthesis found)"
+    prior_bull = next((t["content"] for t in reversed(transcript_so_far) if t.get("role") == "bull"), "")
+    prior_bear = next((t["content"] for t in reversed(transcript_so_far) if t.get("role") == "bear"), "")
+
+    transcript: list[dict] = []
+    trail: list[dict] = []
+    round_num = 3
+
+    emit_progress(state, "debate_bull_extra", "started", "Bull agent addressing the judge's flagged disagreement")
+    bull_final = _agent_call(
+        "bull",
+        "The judge found the bull and bear cases in sharp, unresolved conflict. Make one final, "
+        "focused case that directly addresses the judge's stated disagreement below, still grounded "
+        "only in the fetched data.",
+        state,
+        extra_context=f"\nJudge's synthesis so far:\n{judge_reasoning}\n\nBear's last argument:\n{prior_bear}",
+        node="debate_bull_extra",
+    )
+    emit_progress(state, "debate_bull_extra", "done", "Bull final round complete")
+    transcript.append({"role": "bull", "round": round_num, "content": bull_final})
+    trail.append({"step": "debate_bull_extra", "ticker": None, "status": "done", "detail": bull_final[:200]})
+
+    emit_progress(state, "debate_bear_extra", "started", "Bear agent addressing the judge's flagged disagreement")
+    bear_final = _agent_call(
+        "bear",
+        "The judge found the bull and bear cases in sharp, unresolved conflict. Make one final, "
+        "focused case that directly addresses the judge's stated disagreement below, still grounded "
+        "only in the fetched data.",
+        state,
+        extra_context=f"\nJudge's synthesis so far:\n{judge_reasoning}\n\nBull's last argument:\n{prior_bull}",
+        node="debate_bear_extra",
+    )
+    emit_progress(state, "debate_bear_extra", "done", "Bear final round complete")
+    transcript.append({"role": "bear", "round": round_num, "content": bear_final})
+    trail.append({"step": "debate_bear_extra", "ticker": None, "status": "done", "detail": bear_final[:200]})
+
+    return {"transcript": transcript, "trail": trail, "debate_extended": True}
 
 
 def run_risk_refine(state: GraphState) -> dict:
@@ -136,6 +217,7 @@ def run_risk_refine(state: GraphState) -> dict:
         "and the originally fetched data — do not re-argue bull/bear points, just reassess risk fit.",
         state,
         extra_context=f"\nExisting bull/bear arguments:\n{bull_bear_summary}",
+        node="debate_risk_refine",
     )
     turn = {"role": "risk", "round": len([t for t in state.get("transcript", []) if t.get("role") == "risk"]) + 1, "content": content}
     return {
