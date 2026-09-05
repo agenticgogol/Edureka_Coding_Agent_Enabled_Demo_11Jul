@@ -45,10 +45,6 @@ PROVIDER_DEFAULT_MODELS = {
     "openrouter": "meta-llama/llama-3.1-8b-instruct:free",
 }
 
-# Providers with no .env default in this app — always require the sidebar
-# API key override, unlike anthropic/openai/groq which can fall back to .env.
-NO_ENV_DEFAULT_PROVIDERS = {"kimi", "glm", "deepseek", "openrouter"}
-
 STANCE_COLORS = {
     "buy": ("#1b5e20", "#c8e6c9"),   # dark green text, light green bg
     "sell": ("#b71c1c", "#ffcdd2"),  # dark red text, light red bg
@@ -224,16 +220,15 @@ with st.sidebar:
     )
     default_model = PROVIDER_DEFAULT_MODELS[provider]
     model = st.text_input("Model name", value=default_model)
-    needs_key_override = provider in NO_ENV_DEFAULT_PROVIDERS
     api_key_override = st.text_input(
-        "API key override" + (" (required for this provider)" if needs_key_override else " (optional)"),
+        "Your API key (required)",
         type="password",
-        help="Required — this provider has no .env default."
-        if needs_key_override
-        else "Leave blank to use the backend's .env default for this provider.",
+        help="This public demo does not use the server's own API key for chat — "
+        "paste your own key for the selected provider. It's sent per-request, "
+        "never stored server-side.",
     )
-    if needs_key_override and not api_key_override:
-        st.warning(f"'{provider}' needs an API key — paste one above before sending a message.")
+    if not api_key_override:
+        st.warning(f"Paste your own '{provider}' API key above before sending a message.")
 
     st.divider()
 
@@ -986,7 +981,7 @@ with tab_chat:
                 "What's Tesla's valuation like?",
             ]
             for col, sample in zip(sample_cols, sample_questions):
-                if col.button(sample, key=f"sample_q_{sample}"):
+                if col.button(sample, key=f"sample_q_{sample}", disabled=not api_key_override):
                     process_user_message(sample)
         for i, turn in reversed(list(enumerate(st.session_state.turns))):
             with st.container():
@@ -1040,7 +1035,12 @@ with tab_chat:
     with chat_container:
         st.subheader("Ask a question")
 
-        user_message = st.chat_input('Ask a question, e.g. "Should I invest in AAPL right now?"')
+        user_message = st.chat_input(
+            'Ask a question, e.g. "Should I invest in AAPL right now?"'
+            if api_key_override
+            else "Paste your API key in the sidebar to start chatting",
+            disabled=not api_key_override,
+        )
 
         if user_message and user_message.strip():
             process_user_message(user_message.strip())

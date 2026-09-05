@@ -31,7 +31,7 @@ import time
 import uuid
 import threading
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from backend.agent import memory, run_turn
@@ -91,6 +91,15 @@ _RATE_LIMIT_MAX_REQUESTS = 10
 _RATE_LIMIT_HISTORY: dict[str, collections.deque] = collections.defaultdict(collections.deque)
 _RATE_LIMIT_LOCK = threading.Lock()
 
+# Separate, per-IP limit on POST /auth/session itself — that endpoint is
+# unauthenticated by necessity (it's how a client gets its first token), so
+# without this an IP could mint unlimited fresh tokens to dodge the
+# per-user_key /chat* rate limit above entirely.
+_AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
+_AUTH_RATE_LIMIT_MAX_REQUESTS = 5
+_AUTH_RATE_LIMIT_HISTORY: dict[str, collections.deque] = collections.defaultdict(collections.deque)
+_AUTH_RATE_LIMIT_LOCK = threading.Lock()
+
 
 def _purge_stale_jobs() -> None:
     cutoff = time.time() - _JOB_TTL_SECONDS
@@ -112,6 +121,38 @@ def _enforce_rate_limit(user_key: str) -> None:
                 detail=(
                     f"Rate limit exceeded: max {_RATE_LIMIT_MAX_REQUESTS} requests per "
                     f"{_RATE_LIMIT_WINDOW_SECONDS}s per user_key. Try again shortly."
+                ),
+            )
+        history.append(now)
+
+
+def _require_client_key(payload: ChatRequest) -> None:
+    """Public deployment guard: every real LLM call must be paid for by the
+    caller's own key, never the server's `.env` default. `.env` keys stay
+    reserved for local/admin use (e.g. `llm_client.verify_key`, run outside
+    these HTTP routes). Without this, an anonymous visitor omitting
+    `provider`/`api_key` would silently ride the server's key for free."""
+    if not payload.provider or not payload.api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="This is a public demo — provide your own 'provider' and 'api_key' "
+            "in the request (the Streamlit sidebar's API key field). The server's "
+            "own .env keys are not used for chat requests.",
+        )
+
+
+def _enforce_auth_rate_limit(client_ip: str) -> None:
+    now = time.time()
+    with _AUTH_RATE_LIMIT_LOCK:
+        history = _AUTH_RATE_LIMIT_HISTORY[client_ip]
+        while history and now - history[0] > _AUTH_RATE_LIMIT_WINDOW_SECONDS:
+            history.popleft()
+        if len(history) >= _AUTH_RATE_LIMIT_MAX_REQUESTS:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"Rate limit exceeded: max {_AUTH_RATE_LIMIT_MAX_REQUESTS} new sessions "
+                    f"per {_AUTH_RATE_LIMIT_WINDOW_SECONDS}s per IP. Try again shortly."
                 ),
             )
         history.append(now)
@@ -155,11 +196,16 @@ def health() -> HealthResponse:
 
 
 @router.post("/auth/session", response_model=SessionTokenResponse)
-def create_auth_session() -> SessionTokenResponse:
+def create_auth_session(request: Request) -> SessionTokenResponse:
     """Issues a new server-side session credential: an unguessable random
     token mapped to a fresh random `user_key`. The client stores the token
     and sends it back on `X-Session-Token` for every subsequent chat/
-    session request — free-text `user_key` is no longer accepted."""
+    session request — free-text `user_key` is no longer accepted.
+
+    Rate-limited per IP (see `_enforce_auth_rate_limit`) since this is the
+    one endpoint with no prior auth — unlimited, it would let a client mint
+    a fresh token per request to dodge the per-user_key /chat* rate limit."""
+    _enforce_auth_rate_limit(request.client.host if request.client else "unknown")
     token, user_key = memory.create_session()
     return SessionTokenResponse(token=token, user_key=user_key)
 
@@ -207,6 +253,7 @@ def validate_ticker(symbol: str) -> TickerValidateResponse:
 @router.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest, x_session_token: str | None = Header(default=None)) -> ChatResponse:
     user_key = _authenticate(x_session_token)
+    _require_client_key(payload)
     _enforce_rate_limit(user_key)
     # Auto-register unseen session_ids rather than 404ing, so a frontend
     # that generates its own session_id (rather than calling /session/new
@@ -263,6 +310,7 @@ def _run_chat_job(job_id: str, payload: ChatRequest, user_key: str) -> None:
 @router.post("/chat/start")
 def start_chat(payload: ChatRequest, x_session_token: str | None = Header(default=None)) -> dict:
     user_key = _authenticate(x_session_token)
+    _require_client_key(payload)
     _enforce_rate_limit(user_key)
     _purge_stale_jobs()
     job_id = str(uuid.uuid4())
@@ -391,6 +439,7 @@ def cancel_chat(job_id: str) -> dict:
 @router.post("/chat/stream")
 def chat_stream(payload: ChatRequest, x_session_token: str | None = Header(default=None)) -> StreamingResponse:
     user_key = _authenticate(x_session_token)
+    _require_client_key(payload)
     _enforce_rate_limit(user_key)
     return StreamingResponse(
         _stream_chat_events(payload, user_key),

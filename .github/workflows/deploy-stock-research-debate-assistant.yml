@@ -1,0 +1,39 @@
+name: Deploy stock-research-debate-assistant
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "teaching/stock-research-debate-assistant/**"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/agent-app
+            git pull
+            cd teaching/stock-research-debate-assistant
+            docker compose up -d --build
+            docker compose ps
+
+      - name: Verify /health after deploy
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf "http://${{ secrets.DEPLOY_HOST }}/health" -o /dev/null; then
+              echo "health check passed"
+              exit 0
+            fi
+            echo "waiting for health check ($i/10)..."
+            sleep 5
+          done
+          echo "health check failed after deploy" >&2
+          exit 1
