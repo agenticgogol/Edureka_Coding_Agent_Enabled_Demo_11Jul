@@ -23,16 +23,18 @@ jobs:
             git pull
             cd teaching/stock-research-debate-assistant
             docker compose up -d --build
+            docker compose restart caddy
             docker compose ps
 
       - name: Verify /health after deploy
         run: |
           for i in $(seq 1 10); do
-            if curl -sf "http://${{ secrets.DEPLOY_HOST }}/health" -o /dev/null; then
-              echo "health check passed"
+            body=$(curl -sf "http://${{ secrets.DEPLOY_HOST }}/health" || true)
+            if echo "$body" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+              echo "health check passed: $body"
               exit 0
             fi
-            echo "waiting for health check ($i/10)..."
+            echo "waiting for health check ($i/10)... got: $body"
             sleep 5
           done
           echo "health check failed after deploy" >&2
