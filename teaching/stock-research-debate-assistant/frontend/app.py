@@ -71,7 +71,7 @@ def escape_markdown_dollars(text: str) -> str:
     return text.replace("$", "\\$")
 
 
-st.set_page_config(page_title="Stock Research & Debate Assistant", layout="wide")
+st.set_page_config(page_title="Stock Research App - developed by Edureka Team", layout="wide")
 
 
 # ---------------------------------------------------------------------------
@@ -954,7 +954,7 @@ def process_user_message(user_message: str):
     thread.start()
 
 
-st.title("Stock Research & Debate Assistant")
+st.title("Stock Research App - developed by Edureka Team")
 st.caption(
     "Bull vs. bear vs. risk debate, grounded in live price/fundamentals and "
     "news, ending in an explicit judge synthesis. Educational demo only — "
