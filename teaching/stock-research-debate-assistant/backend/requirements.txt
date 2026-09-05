@@ -29,7 +29,7 @@ frankfurtermcp>=0.1,<1
 # Phoenix 6.x does not support the Python versions required by the current
 # Frankfurter MCP package. Phoenix 13-20 retains the phoenix.otel API used by
 # backend/observability.py and supports Python 3.12.
-arize-phoenix>=13,<21
+arize-phoenix==13.18.2
 arize-phoenix-otel>=0.6,<1
 openinference-instrumentation>=0.1.17,<1
 opentelemetry-api>=1.27,<2

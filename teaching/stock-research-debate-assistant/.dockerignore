@@ -1,0 +1,7 @@
+.venv-3.12
+__pycache__
+*.pyc
+.env
+tests
+backend/data/*.db
+backend/data/*.jsonl
