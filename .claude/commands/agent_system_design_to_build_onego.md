@@ -73,6 +73,22 @@ two rows are genuinely open-ended.
    `agent-decision-external-tool-sourcing` regardless of staged vs.
    one-shot path; it checks for a covering MCP server first, for every
    tool, and prefers it by default)?
+4a. **Vector store** — only if Q1-Q3 imply retrieval over changing
+   documents/policies (RAG or Agentic RAG territory): recommend one of
+   `chromadb` (local-first default, no external service — recommend
+   unless the usecase names a reason not to), `faiss` (pure in-memory/
+   file-index, no service at all, fastest to demo), or `qdrant` (cloud —
+   only when the usecase needs a managed/scalable service), per
+   `vector-store`'s recommendation rules. Give the concrete default and a
+   one-line reason, don't just list options.
+4b. **Structured database** — only if the usecase needs rows/documents
+   beyond retrieval (accounts, transactional records, structured lookups
+   feeding a multi-tool router). Recommend `sqlite` (local-first default,
+   stdlib-only) unless the usecase concretely needs concurrent writers/
+   relational integrity (`postgres`) or schema-variable documents
+   (`mongodb`), per `database`'s recommendation rules. Skip this item
+   entirely if the usecase has no structured-storage need — don't force a
+   database where none is needed.
 5. **Frontend** — Streamlit (this repo's default for demos) / Next.js
    (production-style) / notebook only (fastest path, no separate backend)
    / none (API only)? This directly decides `teaching_brief.md`'s
@@ -125,6 +141,14 @@ re-asks what's already settled. Point the output at `teaching/<slug>/`:
 Run to completion (through explicit approval at every stage) before
 continuing. Do not skip a stage or infer its answer — same ground rule as
 `/agent-system-design`.
+
+If stage 2 (`agent-decision-design-pattern`) lands on Agentic RAG, its
+output must name which of `agent-agentic-rag`'s capabilities (1-7: the
+always-on core plus any of routing/multi-hop planning/reranking/
+groundedness verification/abstention) are in scope for this usecase, and
+which vector store/database from Step 2's 4a/4b answers back that
+retrieval — carry both into `teaching_brief.md`'s Constraints in Step 4
+rather than re-deciding them there.
 
 ## Step 4 — Draft and approve `teaching_brief.md`
 
