@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Mastery Lab — From Zero to Built</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EFEDE6;
+    --panel:#FFFFFF;
+    --ink:#1B1D19;
+    --muted:#63665D;
+    --line:#DAD5C8;
+
+    --a:#1F6F5C;
+    --a-soft:#E2EEEA;
+    --b:#B5651D;
+    --b-soft:#F4E8D9;
+    --c:#4C3A8C;
+    --c-soft:#EAE3F6;
+
+    --track:#1F6F5C;
+    --track-soft:#E2EEEA;
+
+    --radius:3px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Source Serif 4', Georgia, serif;
+    line-height:1.55;
+    min-height:100vh;
+  }
+  h1,h2,h3,h4{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    line-height:1.15;
+    margin:0 0 .4em 0;
+    letter-spacing:-0.01em;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---------- layout shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns:230px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width: 820px){
+    .shell{grid-template-columns:1fr;}
+  }
+
+  /* ---------- sidebar ---------- */
+  .rail{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:28px 0 28px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  @media (max-width: 820px){
+    .rail{position:relative;height:auto;border-right:none;border-bottom:1px solid var(--line);
+      display:flex;overflow-x:auto;padding:16px 12px;gap:8px;}
+  }
+  .rail-brand{
+    padding:0 22px 22px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:6px;
+  }
+  @media (max-width:820px){ .rail-brand{display:none;} }
+  .rail-brand .kicker{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:.02em;
+  }
+  .rail-brand h1{font-size:19px;margin-top:4px;}
+
+  .tab-btn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    border-left:4px solid transparent;
+    padding:14px 20px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .tab-btn .dot{
+    width:9px;height:9px;border-radius:50%;
+    background:currentColor;
+    flex:none;
+  }
+  .tab-btn.active{
+    color:var(--ink);
+    background:var(--track-soft);
+    border-left-color:var(--track);
+  }
+  .tab-btn.active .dot{background:var(--track);}
+  .tab-btn:hover{color:var(--ink);}
+  .rail-foot{
+    padding:18px 22px 0;
+    margin-top:10px;
+    font-size:12.5px;
+    color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;
+    line-height:1.6;
+  }
+  @media (max-width:820px){ .rail-foot{display:none;} }
+
+  /* ---------- main content ---------- */
+  main{padding:44px 48px 90px;max-width:920px;}
+  @media (max-width:820px){ main{padding:28px 20px 70px;} }
+
+  .track-panel{display:none;}
+  .track-panel.active{display:block;}
+
+  .track-head{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .track-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.03em;
+    color:var(--track);
+  }
+  .track-head h2{font-size:32px;}
+  .track-sub{color:var(--muted);font-size:17px;max-width:60ch;}
+
+  .diagram-wrap{
+    margin:26px 0 30px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 6px 8px;
+  }
+  .diagram-wrap svg{width:100%;height:auto;display:block;}
+
+  .meta-row{
+    display:flex;
+    gap:26px;
+    flex-wrap:wrap;
+    margin:22px 0 8px;
+    padding:16px 18px;
+    background:var(--track-soft);
+    border-radius:var(--radius);
+    font-size:14.5px;
+  }
+  .meta-row div{flex:1;min-width:200px;}
+  .meta-row .k{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    display:block;
+    margin-bottom:3px;
+  }
+
+  section.subtrack-list{margin-top:34px;}
+  .section-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.03em;
+    border-bottom:1px solid var(--line);
+    padding-bottom:8px;
+    margin-bottom:4px;
+  }
+
+  details.subtrack{
+    border-bottom:1px solid var(--line);
+    padding:16px 0;
+  }
+  details.subtrack summary{
+    cursor:pointer;
+    list-style:none;
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:17px;
+  }
+  details.subtrack summary::-webkit-details-marker{display:none;}
+  details.subtrack summary .idx{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:400;
+    font-size:13px;
+    color:var(--track);
+    flex:none;
+    width:26px;
+  }
+  details.subtrack summary .chev{
+    margin-left:auto;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--muted);
+    font-size:13px;
+    transition:transform .15s ease;
+  }
+  details.subtrack[open] summary .chev{transform:rotate(90deg);}
+  .subtrack-body{padding:16px 4px 4px 40px;}
+  @media (max-width:600px){ .subtrack-body{padding-left:6px;} }
+
+  .subtrack-body h4{
+    font-size:12px;
+    font-family:'IBM Plex Mono',monospace;
+    color:var(--muted);
+    letter-spacing:.03em;
+    margin:18px 0 8px;
+    text-transform:none;
+  }
+  .subtrack-body h4:first-child{margin-top:0;}
+
+  ol.steps{margin:0;padding-left:20px;}
+  ol.steps li{margin-bottom:10px;font-size:15.5px;}
+  ol.steps li b{color:var(--ink);}
+  ol.steps li .why{color:var(--muted);font-size:14.5px;}
+
+  .tags{display:flex;flex-wrap:wrap;gap:7px;}
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    background:var(--track-soft);
+    color:var(--track);
+    padding:4px 9px;
+    border-radius:20px;
+  }
+
+  .pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:600px){ .pc-grid{grid-template-columns:1fr;} }
+  .pc-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;}
+  .pc-box .pc-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);display:block;margin-bottom:6px;}
+  .pc-box ul{margin:0;padding-left:18px;font-size:14.5px;}
+  .pc-box.pro{border-left:3px solid var(--track);}
+  .pc-box.con{border-left:3px solid var(--muted);}
+
+  .when p{font-size:15.5px;margin:0;}
+
+  /* ---------- claude code prompt block ---------- */
+  .prompt-block{
+    margin-top:40px;
+    background:#15140F;
+    color:#EDE9DD;
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .prompt-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 18px;
+    border-bottom:1px solid #33312A;
+  }
+  .prompt-head .t{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:#B7B2A2;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .prompt-head .t .sq{width:8px;height:8px;background:var(--track);border-radius:1px;}
+  .copy-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    background:#242219;
+    color:#EDE9DD;
+    border:1px solid #3B3928;
+    padding:6px 12px;
+    border-radius:20px;
+    cursor:pointer;
+  }
+  .copy-btn:hover{background:#2E2C20;}
+  .copy-btn.copied{color:var(--track);border-color:var(--track);}
+  pre.prompt-text{
+    margin:0;
+    padding:20px 22px 24px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13.2px;
+    line-height:1.65;
+    white-space:pre-wrap;
+    max-height:420px;
+    overflow-y:auto;
+  }
+  .prompt-text .stage{color:#8FCBB8;}
+
+  footer.note{
+    margin-top:46px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+    font-size:13.5px;
+    color:var(--muted);
+  }
+
+  /* ---------- theory / use / interview / pitfalls / glossary ---------- */
+  .theory-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 30px;margin-top:16px;}
+  @media (max-width:700px){ .theory-grid{grid-template-columns:1fr;} }
+  .theory-item dt{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;margin-bottom:4px;}
+  .theory-item dd{margin:0;font-size:14.5px;color:var(--muted);}
+
+  .use-box{
+    margin:26px 0;
+    padding:16px 20px;
+    border-left:3px solid var(--track);
+    background:var(--track-soft);
+    border-radius:0 var(--radius) var(--radius) 0;
+    font-size:15.5px;
+  }
+  .use-box b{font-family:'Space Grotesk',sans-serif;}
+
+  .interview-list{margin-top:16px;}
+  .interview-item{padding:14px 0;border-bottom:1px solid var(--line);}
+  .interview-item:last-child{border-bottom:none;}
+  .interview-item .q{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:15px;
+    display:flex;
+    gap:10px;
+  }
+  .interview-item .q .qn{color:var(--track);font-family:'IBM Plex Mono',monospace;font-weight:400;flex:none;}
+  .interview-item .hint{margin:6px 0 0 30px;font-size:14px;color:var(--muted);font-style:italic;}
+
+  .pitfall-list{margin-top:16px;}
+  .pitfall-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14.5px;}
+  .pitfall-item:last-child{border-bottom:none;}
+  .pitfall-item .mark{
+    flex:none;width:20px;height:20px;border-radius:50%;
+    background:#A13D3D;color:#fff;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;
+    display:flex;align-items:center;justify-content:center;
+    margin-top:1px;
+  }
+
+  .glossary-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 30px;margin-top:14px;}
+  @media (max-width:700px){ .glossary-grid{grid-template-columns:1fr;} }
+  .glossary-item{font-size:14px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .glossary-item b{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
+  .cloud-table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px;}
+  .cloud-table th,.cloud-table td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);}
+  .cloud-table th{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);font-weight:400;}
+
+  /* ---------- path selector ---------- */
+  .card-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:16px;}
+  @media (max-width:900px){ .card-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .card-grid{grid-template-columns:1fr;} }
+  .opt-card{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--c1);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:9px;}
+  .opt-card .letter{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;color:var(--c1);}
+  .opt-card .name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;}
+  .opt-card .desc{font-size:13.5px;color:var(--muted);flex:1;}
+  .opt-card .stat{font-size:12.5px;display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:7px;}
+  .opt-card .stat span:first-child{font-family:'IBM Plex Mono',monospace;color:var(--muted);}
+  .opt-card .stat span:last-child{font-weight:600;text-align:right;}
+
+  .cmp-table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);margin-top:16px;}
+  .cmp-table th,.cmp-table td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top;}
+  .cmp-table th{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);font-weight:400;background:#F7F5EF;}
+  .cmp-table td.opt-cell{font-family:'Space Grotesk',sans-serif;font-weight:600;white-space:nowrap;}
+  .cmp-table tr:last-child td{border-bottom:none;}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;}
+  @media (max-width:760px){
+    .cmp-table thead{display:none;}
+    .cmp-table, .cmp-table tbody, .cmp-table tr, .cmp-table td{display:block;width:100%;}
+    .cmp-table tr{border-bottom:2px solid var(--line);padding:12px 0;}
+    .cmp-table td{border-bottom:none;padding:4px 14px;}
+    .cmp-table td::before{content:attr(data-label);display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);margin-bottom:2px;}
+  }
+
+  /* ---------- manual-build code snippets inside subtracks ---------- */
+  .code-snippet-wrap{margin-top:14px;}
+  .code-snippet-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:6px;}
+  pre.code-snippet{
+    margin:0 0 4px;
+    background:#15140F;
+    color:#EDE9DD;
+    border-radius:var(--radius);
+    padding:14px 16px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    line-height:1.55;
+    white-space:pre-wrap;
+    overflow-x:auto;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="rail">
+    <div class="rail-brand">
+      <span class="kicker">LLM MASTERY LAB</span>
+      <h1>From Zero to Built</h1>
+    </div>
+
+    <button class="tab-btn" data-tab="start" style="--track:#37474F;--track-soft:#E7EBEC;">
+      <span class="dot"></span> Start Here
+    </button>
+    <button class="tab-btn" data-tab="paths" style="--track:#8A4B32;--track-soft:#F1E3DC;">
+      <span class="dot"></span> Path Selector
+    </button>
+    <button class="tab-btn active" data-tab="a" style="--track:#1F6F5C;--track-soft:#E2EEEA;">
+      <span class="dot"></span> Track A — Run
+    </button>
+    <button class="tab-btn" data-tab="b" style="--track:#B5651D;--track-soft:#F4E8D9;">
+      <span class="dot"></span> Track B — Fine-Tune
+    </button>
+    <button class="tab-btn" data-tab="c" style="--track:#4C3A8C;--track-soft:#EAE3F6;">
+      <span class="dot"></span> Track C — Pretrain
+    </button>
+
+    <div class="rail-foot">
+      A → run existing models<br>
+      B → adapt a base model<br>
+      C → build your own base<br>
+      <br>
+      C hands off into B.<br>
+      B and C both lean on A.
+    </div>
+  </nav>
+
+  <main>
+
+    <!-- ============================================================ START HERE ============================================================ -->
+    <section class="track-panel" id="panel-start" style="--track:#37474F;--track-soft:#E7EBEC;">
+      <div class="track-head">
+        <span class="track-label">BEFORE YOU START</span>
+        <h2>Setup, Glossary &amp; Common Pitfalls</h2>
+        <p class="track-sub">Read this once before Track A. It covers the prerequisites, environment setup, and jargon the tracks assume you already have — plus the mistakes that trip up almost every newcomer.</p>
+      </div>
+
+      <section class="subtrack-list">
+        <div class="section-title">PREREQUISITES — DO YOU NEED THIS FIRST?</div>
+        <div class="glossary-grid">
+          <div class="glossary-item"><b>Linear algebra</b> — vectors, matrices, matrix multiplication. Needed to follow attention math (Track C); not needed for Track A.</div>
+          <div class="glossary-item"><b>Probability basics</b> — what a distribution is, what softmax does. Needed everywhere; Track A's sampling section is the easiest place to build this.</div>
+          <div class="glossary-item"><b>Python fluency</b> — comfortable reading/writing scripts, using pip/venv. Assumed throughout.</div>
+          <div class="glossary-item"><b>Gradient descent intuition</b> — "adjust weights to reduce a loss number." Needed for Tracks B and C; not for Track A.</div>
+        </div>
+        <div class="use-box" style="--track:#37474F;--track-soft:#E7EBEC;"><b>Don't have the math yet?</b> You don't need a full course first. Track A needs almost none of it — start there, and pick up probability and linear-algebra concepts in context as Tracks B and C need them, rather than front-loading a semester of math.</div>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">HARDWARE &amp; ENVIRONMENT</div>
+        <ol class="steps" style="margin-top:14px;">
+          <li><b>Check what you actually have</b> — run <code>nvidia-smi</code>; no output means no usable local GPU. <span class="why">— this decides your entire hardware path below.</span></li>
+          <li><b>Match your CUDA version to your PyTorch build</b> before installing anything else. <span class="why">— a torch/CUDA mismatch is the single most common "it just doesn't work" cause for newcomers.</span></li>
+          <li><b>No local GPU? Use a free or cheap cloud tier</b> — see the table below. <span class="why">— a missing GPU should change where you start, never be a reason to stop.</span></li>
+          <li><b>Check disk space before downloading models</b> — even small open models run 2–15GB each. <span class="why">— running out of disk mid-download is a common, confusing first failure.</span></li>
+        </ol>
+        <table class="cloud-table">
+          <tr><th>Option</th><th>GPU</th><th>Cost</th><th>Good for</th></tr>
+          <tr><td>Google Colab (free)</td><td>T4, shared, time-limited</td><td>Free</td><td>Track A experiments, small Track B LoRA runs</td></tr>
+          <tr><td>Kaggle Notebooks</td><td>T4 ×2, ~30 hrs/week free</td><td>Free</td><td>Same as above, more free hours</td></tr>
+          <tr><td>RunPod / Vast.ai</td><td>RTX 3090/4090, A10, A100</td><td>~$0.20–$2.50/hr</td><td>Real Track B/C training runs</td></tr>
+          <tr><td>Lambda Labs</td><td>A100 / H100</td><td>~$1–$3/hr</td><td>Track C full pretraining runs</td></tr>
+        </table>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">GLOSSARY — 20 TERMS USED THROUGHOUT</div>
+        <div class="glossary-grid">
+          <div class="glossary-item"><b>Parameter / weight</b> — a learned number inside the model; "7B model" means 7 billion of these.</div>
+          <div class="glossary-item"><b>Token</b> — the model's unit of text, roughly a word-piece, not a whole word.</div>
+          <div class="glossary-item"><b>Embedding</b> — a token turned into a vector of numbers the model can compute with.</div>
+          <div class="glossary-item"><b>Logits</b> — the model's raw, unnormalized scores for "what token comes next," before softmax.</div>
+          <div class="glossary-item"><b>Softmax</b> — turns logits into a proper probability distribution that sums to 1.</div>
+          <div class="glossary-item"><b>Loss</b> — a single number measuring how wrong predictions were; training exists to shrink it.</div>
+          <div class="glossary-item"><b>Gradient</b> — the direction/amount to nudge each weight to reduce the loss.</div>
+          <div class="glossary-item"><b>Epoch</b> — one full pass through the training dataset.</div>
+          <div class="glossary-item"><b>Batch size</b> — how many examples are processed together before one weight update.</div>
+          <div class="glossary-item"><b>Checkpoint</b> — a saved snapshot of model weights at a point in training.</div>
+          <div class="glossary-item"><b>Context window</b> — the max number of tokens the model can attend to at once.</div>
+          <div class="glossary-item"><b>Attention</b> — the mechanism letting each token weigh the relevance of every other token.</div>
+          <div class="glossary-item"><b>Inference</b> — running a trained model to produce output, as opposed to training it.</div>
+          <div class="glossary-item"><b>Pretraining</b> — the initial, large-scale pass that builds general language ability.</div>
+          <div class="glossary-item"><b>Fine-tuning</b> — further, smaller-scale training that specializes a pretrained model.</div>
+          <div class="glossary-item"><b>Quantization</b> — storing weights in fewer bits to save memory, at some precision cost.</div>
+          <div class="glossary-item"><b>VRAM</b> — GPU memory; usually the hard limit on model size you can run or train.</div>
+          <div class="glossary-item"><b>Latency / throughput</b> — time to one response vs responses handled per unit time — often a tradeoff.</div>
+          <div class="glossary-item"><b>Base model</b> — a pretrained model before any instruction/chat fine-tuning.</div>
+          <div class="glossary-item"><b>Instruct / chat model</b> — a base model fine-tuned to follow instructions conversationally.</div>
+        </div>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">PITFALLS THAT CATCH ALMOST EVERY NEWCOMER</div>
+        <div class="pitfall-list">
+          <div class="pitfall-item"><span class="mark">!</span><span><b>Not tracking experiments.</b> Even a plain spreadsheet or a free Weights &amp; Biases account — by run 5 you won't remember which config produced which result.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>Trusting vibes over numbers.</b> "This output looks better" is not evaluation — every track's guide ends in a measured comparison for a reason.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>Chat template mismatches.</b> Training or prompting with the wrong template for a given model is the single most common source of "this model is broken" reports.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>CUDA out-of-memory panic.</b> Before assuming you need a bigger GPU: reduce batch size, enable gradient accumulation and gradient checkpointing, or drop to a smaller quantization.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>Ignoring model licenses.</b> "Open weights" doesn't always mean unrestricted commercial use — check before building on top of a specific model.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>Skipping the smoke test.</b> Launching a full run without a 50-step sanity check first turns a 2-minute bug into a 4-hour wasted run.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>No fixed random seed.</b> Without one, you can't tell if a result changed because of your edit or just run-to-run noise.</span></div>
+          <div class="pitfall-item"><span class="mark">!</span><span><b>Jumping straight to Track C.</b> Pretraining is the least forgiving place to learn debugging — Tracks A and B teach you to read errors on a much shorter feedback loop first.</span></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================================================ PATH SELECTOR ============================================================ -->
+    <section class="track-panel" id="panel-paths" style="--track:#8A4B32;--track-soft:#F1E3DC;">
+      <div class="track-head">
+        <span class="track-label">CHOOSE YOUR PATH</span>
+        <h2>Which Path Should You Take?</h2>
+        <p class="track-sub">Four ways to get an LLM working for you — from running something that already exists to building your own from raw data. Same underlying skill stack, wildly different time and cost.</p>
+      </div>
+
+      <section class="subtrack-list">
+        <div class="section-title">THE FOUR OPTIONS</div>
+        <div class="card-grid">
+
+          <div class="opt-card" style="--c1:#1F6F5C;">
+            <span class="letter">A</span>
+            <span class="name">Run an existing model</span>
+            <p class="desc">Load and serve an open, pretrained model — no training involved. Ollama, HF Transformers, local or lightly self-hosted.</p>
+            <div class="stat"><span>TIME</span><span>2–3 weeks</span></div>
+            <div class="stat"><span>COST</span><span>$0–$50</span></div>
+            <div class="stat"><span>HARDWARE</span><span>Laptop / 1 GPU</span></div>
+          </div>
+
+          <div class="opt-card" style="--c1:#B5651D;">
+            <span class="letter">B</span>
+            <span class="name">Fine-tune an existing model</span>
+            <p class="desc">SFT, LoRA/QLoRA, and preference tuning (DPO) on top of an open base model. How most real "custom LLM" work actually happens.</p>
+            <div class="stat"><span>TIME</span><span>2–3 weeks</span></div>
+            <div class="stat"><span>COST</span><span>$50–$300</span></div>
+            <div class="stat"><span>HARDWARE</span><span>1–4 GPUs</span></div>
+          </div>
+
+          <div class="opt-card" style="--c1:#4C3A8C;">
+            <span class="letter">C</span>
+            <span class="name">Pretrain a small model (SLM)</span>
+            <p class="desc">The full pipeline — data, tokenizer, architecture, training loop — at a scale (100M–1B params) you can actually complete.</p>
+            <div class="stat"><span>TIME</span><span>3–4 weeks</span></div>
+            <div class="stat"><span>COST</span><span>$200–$1,500+</span></div>
+            <div class="stat"><span>HARDWARE</span><span>1–8 GPUs</span></div>
+          </div>
+
+          <div class="opt-card" style="--c1:#4A4740;">
+            <span class="letter">D</span>
+            <span class="name">Pretrain a frontier LLM</span>
+            <p class="desc">GPT-4 / Llama-class pretraining. An org-scale undertaking, not a learning project — included here for completeness.</p>
+            <div class="stat"><span>TIME</span><span>Months, dedicated team</span></div>
+            <div class="stat"><span>COST</span><span>$1M–$100M+</span></div>
+            <div class="stat"><span>HARDWARE</span><span>100s–1000s of GPUs</span></div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">FULL COMPARISON</div>
+        <table class="cmp-table">
+          <thead>
+            <tr><th>Option</th><th>What it is</th><th>Time to competency</th><th>Cost estimate</th><th>Best for</th><th>Skip if</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="opt-cell" data-label="Option"><span class="swatch" style="background:#1F6F5C;"></span>A — Run</td>
+              <td data-label="What it is">Load, decode, and serve a pretrained model — zero training</td>
+              <td data-label="Time">2–3 weeks</td>
+              <td data-label="Cost">$0–$50 (mostly free; optional cloud GPU rental)</td>
+              <td data-label="Best for">Prototyping, personal tools, checking if an open model fits your need</td>
+              <td data-label="Skip if">You already know you need custom behavior — go straight to planning Track B</td>
+            </tr>
+            <tr>
+              <td class="opt-cell" data-label="Option"><span class="swatch" style="background:#B5651D;"></span>B — Fine-tune</td>
+              <td data-label="What it is">SFT + LoRA/QLoRA + DPO on top of an open base model</td>
+              <td data-label="Time">2–3 weeks, after Track A fluency</td>
+              <td data-label="Cost">$50–$300 (cloud GPU hours for training runs)</td>
+              <td data-label="Best for">Custom tone, format, or domain behavior — most real "custom LLM" needs</td>
+              <td data-label="Skip if">You lack a few hundred quality examples, or the need is pure knowledge lookup (use RAG)</td>
+            </tr>
+            <tr>
+              <td class="opt-cell" data-label="Option"><span class="swatch" style="background:#4C3A8C;"></span>C — Pretrain SLM</td>
+              <td data-label="What it is">Full pretraining pipeline for a 100M–1B parameter model</td>
+              <td data-label="Time">3–4 weeks</td>
+              <td data-label="Cost">$200–$1,500+ depending on data size and model size</td>
+              <td data-label="Best for">Deeply learning the mechanics; niche domain/language with no usable base model</td>
+              <td data-label="Skip if">Your goal is simply a better product model — Option B on an existing base wins almost every time</td>
+            </tr>
+            <tr>
+              <td class="opt-cell" data-label="Option"><span class="swatch" style="background:#4A4740;"></span>D — Pretrain frontier LLM</td>
+              <td data-label="What it is">Datacenter-scale pretraining of a GPT-4/Llama-class model</td>
+              <td data-label="Time">Months, with a dedicated infrastructure team</td>
+              <td data-label="Cost">$1M–$100M+</td>
+              <td data-label="Best for">Organizations whose core product is a foundation model</td>
+              <td data-label="Skip if">You're an individual or small team — almost always, this is the answer</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">HOW TO CHOOSE</div>
+        <div class="diagram-wrap">
+          <svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrowP" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#63665D"/></marker>
+            </defs>
+            <g font-family="IBM Plex Mono, monospace" font-size="12.5">
+
+              <rect x="20" y="20" width="200" height="48" rx="3" fill="#fff" stroke="#63665D"/>
+              <text x="120" y="40" text-anchor="middle" fill="#1B1D19">Does an existing open</text>
+              <text x="120" y="56" text-anchor="middle" fill="#1B1D19">model already do this?</text>
+
+              <line x1="220" y1="44" x2="270" y2="44" stroke="#1F6F5C" stroke-width="1.5" marker-end="url(#arrowP)"/>
+              <text x="230" y="34" fill="#1F6F5C">yes</text>
+              <rect x="270" y="20" width="130" height="48" rx="3" fill="#E2EEEA" stroke="#1F6F5C"/>
+              <text x="335" y="49" text-anchor="middle" fill="#1B1D19" font-weight="600">Option A</text>
+
+              <line x1="120" y1="68" x2="120" y2="110" stroke="#63665D" stroke-width="1.5" marker-end="url(#arrowP)"/>
+              <text x="128" y="92" fill="#63665D">no</text>
+
+              <rect x="20" y="110" width="200" height="48" rx="3" fill="#fff" stroke="#63665D"/>
+              <text x="120" y="130" text-anchor="middle" fill="#1B1D19">Do you have 100s of</text>
+              <text x="120" y="146" text-anchor="middle" fill="#1B1D19">examples of the behavior?</text>
+
+              <line x1="220" y1="134" x2="270" y2="134" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowP)"/>
+              <text x="230" y="124" fill="#B5651D">yes</text>
+              <rect x="270" y="110" width="130" height="48" rx="3" fill="#F4E8D9" stroke="#B5651D"/>
+              <text x="335" y="139" text-anchor="middle" fill="#1B1D19" font-weight="600">Option B</text>
+
+              <line x1="120" y1="158" x2="120" y2="200" stroke="#63665D" stroke-width="1.5" marker-end="url(#arrowP)"/>
+              <text x="128" y="182" fill="#63665D">no</text>
+
+              <rect x="20" y="200" width="200" height="56" rx="3" fill="#fff" stroke="#63665D"/>
+              <text x="120" y="222" text-anchor="middle" fill="#1B1D19">Is your actual goal to</text>
+              <text x="120" y="238" text-anchor="middle" fill="#1B1D19">learn/research pretraining,</text>
+              <text x="120" y="254" text-anchor="middle" fill="#1B1D19">or no base model exists?</text>
+
+              <line x1="220" y1="228" x2="270" y2="228" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowP)"/>
+              <text x="230" y="218" fill="#4C3A8C">yes</text>
+              <rect x="270" y="204" width="130" height="48" rx="3" fill="#EAE3F6" stroke="#4C3A8C"/>
+              <text x="335" y="233" text-anchor="middle" fill="#1B1D19" font-weight="600">Option C</text>
+
+              <line x1="120" y1="256" x2="120" y2="280" stroke="#63665D" stroke-width="1.5" marker-end="url(#arrowP)"/>
+              <text x="128" y="272" fill="#63665D">no</text>
+              <text x="20" y="296" fill="#63665D">→ Reconsider scope: better prompting or RAG on Option A likely solves it.</text>
+
+              <rect x="480" y="20" width="380" height="90" rx="3" fill="#E8E6E0" stroke="#4A4740" stroke-dasharray="3 3"/>
+              <text x="500" y="42" fill="#1B1D19" font-weight="600">Option D — almost never the answer</text>
+              <text x="500" y="62" fill="#63665D">Reachable only if you're building a foundation-model</text>
+              <text x="500" y="78" fill="#63665D">product with a dedicated infra team and 7–9 figure</text>
+              <text x="500" y="94" fill="#63665D">compute budget. Not a step on this flowchart.</text>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <div class="use-box"><b>On Option D:</b> it's included for completeness, not as a realistic next step. If you're asking "should I pretrain a frontier model," the honest answer is almost always no — Tracks A/B/C in this guide will get you further, faster, for any real learning or product goal.</div>
+
+      <footer class="note">Pick your option above, then open the matching track tab for the step-by-step build.</footer>
+    </section>
+
+    <!-- ============================================================ TRACK A ============================================================ -->
+    <section class="track-panel active" id="panel-a" style="--track:#1F6F5C;--track-soft:#E2EEEA;">
+      <div class="track-head">
+        <span class="track-label">TRACK A</span>
+        <h2>Running Existing LLMs</h2>
+        <p class="track-sub">Inference fluency: load, decode, quantize, and serve a model you didn't train. The cheapest track to iterate on, and the foundation everything else stands on.</p>
+      </div>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 900 190" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1F6F5C"/></marker>
+          </defs>
+          <!-- top row: request path -->
+          <g font-family="IBM Plex Mono, monospace" font-size="12.5">
+            <rect x="10" y="20" width="120" height="46" rx="3" fill="#E2EEEA" stroke="#1F6F5C"/>
+            <text x="70" y="48" text-anchor="middle" fill="#1B1D19">Prompt</text>
+
+            <line x1="130" y1="43" x2="170" y2="43" stroke="#1F6F5C" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="170" y="20" width="120" height="46" rx="3" fill="#fff" stroke="#1F6F5C"/>
+            <text x="230" y="48" text-anchor="middle" fill="#1B1D19">Tokenizer</text>
+
+            <line x1="290" y1="43" x2="330" y2="43" stroke="#1F6F5C" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="330" y="20" width="150" height="46" rx="3" fill="#fff" stroke="#1F6F5C"/>
+            <text x="405" y="48" text-anchor="middle" fill="#1B1D19">Model + KV cache</text>
+
+            <line x1="480" y1="43" x2="520" y2="43" stroke="#1F6F5C" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="520" y="20" width="130" height="46" rx="3" fill="#fff" stroke="#1F6F5C"/>
+            <text x="585" y="48" text-anchor="middle" fill="#1B1D19">Sampler</text>
+
+            <line x1="650" y1="43" x2="690" y2="43" stroke="#1F6F5C" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="690" y="20" width="180" height="46" rx="3" fill="#E2EEEA" stroke="#1F6F5C"/>
+            <text x="780" y="48" text-anchor="middle" fill="#1B1D19">Detokenize → Output</text>
+          </g>
+
+          <!-- bottom row: weight path -->
+          <g font-family="IBM Plex Mono, monospace" font-size="12.5">
+            <rect x="10" y="120" width="150" height="46" rx="3" fill="#fff" stroke="#1F6F5C" stroke-dasharray="3 3"/>
+            <text x="85" y="148" text-anchor="middle" fill="#63665D">Weight file (safetensors/GGUF)</text>
+
+            <line x1="160" y1="143" x2="200" y2="143" stroke="#63665D" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="200" y="120" width="120" height="46" rx="3" fill="#fff" stroke="#1F6F5C" stroke-dasharray="3 3"/>
+            <text x="260" y="148" text-anchor="middle" fill="#63665D">Quantize</text>
+
+            <line x1="320" y1="143" x2="360" y2="143" stroke="#63665D" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="360" y="120" width="120" height="46" rx="3" fill="#fff" stroke="#1F6F5C" stroke-dasharray="3 3"/>
+            <text x="420" y="148" text-anchor="middle" fill="#63665D">Ollama / vLLM</text>
+
+            <line x1="480" y1="143" x2="520" y2="143" stroke="#63665D" stroke-width="1.5" marker-end="url(#arrowA)"/>
+
+            <rect x="520" y="120" width="120" height="46" rx="3" fill="#fff" stroke="#1F6F5C" stroke-dasharray="3 3"/>
+            <text x="580" y="148" text-anchor="middle" fill="#63665D">Served endpoint</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="meta-row">
+        <div><span class="k">HARDWARE</span>Laptop or single consumer GPU</div>
+        <div><span class="k">TIME BUDGET</span>2–3 weeks for real fluency</div>
+        <div><span class="k">GATES</span>Nothing — always your first track</div>
+      </div>
+
+      <section class="subtrack-list">
+        <div class="section-title">SUBTRACKS</div>
+
+        <details class="subtrack" open>
+          <summary><span class="idx">01</span> Environment &amp; Model Ecosystem <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Install Python 3.10+, make a venv, install transformers/torch/huggingface_hub.</b> <span class="why">— this is the toolbox everything else sits on.</span></li>
+              <li><b>Create a Hugging Face account, generate a token, log in via the CLI.</b> <span class="why">— most repos require this even when the model is public.</span></li>
+              <li><b>Install Ollama separately.</b> <span class="why">— gives you a second, simpler path to compare against Transformers.</span></li>
+              <li><b>Pick two small open instruct models (1–3B) and read their model cards in full.</b> <span class="why">— license terms and prompt format differ, and silently break results if ignored.</span></li>
+              <li><b>Pull one via <code>ollama pull</code>, download the other via <code>snapshot_download</code>.</b> <span class="why">— you now have the same "install once" step done two ways.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">safetensors vs GGUF vs ONNX</span><span class="tag">HF Hub structure</span><span class="tag">model licenses</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Free, laptop-safe, zero risk</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Small models won't show emergent capability — mechanics only</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Always the literal first step. Skipping it and jumping to fine-tuning or pretraining means debugging two unknowns — your code and the ecosystem — at the same time.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Stage 1 — environment</div>
+              <pre class="code-snippet">mkdir llm-inference-lab && cd llm-inference-lab
+python3 -m venv .venv
+source .venv/bin/activate
+pip install torch "transformers&gt;=4.44" huggingface_hub accelerate</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">scripts/check_device.py — a real matmul, not just a flag check</div>
+              <pre class="code-snippet">import torch
+device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+x = torch.randn(1024, 1024, device=device)
+print((x @ x).shape, "on", device)</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Stage 2 — pull the same two models via HF and Ollama</div>
+              <pre class="code-snippet">python -c "from huggingface_hub import snapshot_download; \
+snapshot_download('TinyLlama/TinyLlama-1.1B-Chat-v1.0'); \
+snapshot_download('Qwen/Qwen2.5-1.5B-Instruct')"
+
+# separate terminal (blocks the one it runs in):
+ollama serve
+
+# back in your original terminal:
+ollama pull tinyllama:1.1b-chat
+ollama pull qwen2.5:1.5b-instruct</pre>
+            </div>
+            <p style="font-size:14px;color:var(--muted);">HF weights land in <code>~/.cache/huggingface/hub/</code>; Ollama's land in <code>~/.ollama/models/</code> — separate caches, safetensors vs GGUF. Note each model's license and prompt format in a <code>MODELS.md</code> as you go.</p>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">02</span> Tokenization &amp; Generation Internals <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Load a tokenizer alone and encode/decode a sentence; print the token ids.</b> <span class="why">— makes tokenization concrete instead of abstract.</span></li>
+              <li><b>Compare BPE output across two tokenizers on the same sentence.</b> <span class="why">— shows vocab differences directly affect token count and cost.</span></li>
+              <li><b>Call <code>.generate()</code> with <code>output_scores=True</code> and inspect the first token's logits.</b> <span class="why">— demystifies "next-token prediction" as an actual probability distribution.</span></li>
+              <li><b>Print <code>past_key_values</code> tensor shapes across two decoding steps.</b> <span class="why">— makes the KV cache concrete rather than a term you've only read.</span></li>
+              <li><b>Implement greedy decoding yourself in a 10-line loop, no <code>.generate()</code>.</b> <span class="why">— forces you to see what the convenience function hides.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">BPE / SentencePiece</span><span class="tag">logits &amp; softmax</span><span class="tag">KV cache</span><span class="tag">attention masks</span><span class="tag">stopping criteria</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Builds real intuition, runs fine on CPU</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Manual loop is toy-slow, not production-representative</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Before touching Ollama's black-box CLI — you want the mental model in place before the convenience wrapper hides it again.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Key APIs, used directly instead of .generate()</div>
+              <pre class="code-snippet">from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+tok = AutoTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+model = AutoModelForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+
+ids = tok.encode("The capital of France is")          # (a) pure tokenizer
+out = model(torch.tensor([ids]))                       # (b) logits: out.logits shape (1, seq_len, vocab)
+out2 = model(torch.tensor([ids]), use_cache=True)      # (c) out2.past_key_values — inspect shapes
+# (d) loop: argmax logits, append id, feed only the new id back with past_key_values</pre>
+            </div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">03</span> Decoding Strategies &amp; Sampling <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Generate the same prompt at temperature 0, 0.7, and 1.3.</b> <span class="why">— makes "temperature" a felt difference, not a slider you guess at.</span></li>
+              <li><b>Try top-k=50 vs top-p=0.9 vs min-p=0.05 on the same prompt.</b> <span class="why">— these are used interchangeably in docs but behave differently in practice.</span></li>
+              <li><b>Add a repetition penalty to a model that was looping.</b> <span class="why">— one of the most common fixes for "why does my model repeat itself."</span></li>
+              <li><b>Read how speculative decoding works (small draft model, large model verifies).</b> <span class="why">— explains why some serving stacks are faster without any quality change.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">temperature</span><span class="tag">top-k / top-p / min-p</span><span class="tag">repetition penalty</span><span class="tag">speculative decoding</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Cheapest lever for output quality/style</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>No universal "right" setting — always task-dependent</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Whenever output looks "off," before blaming the model itself — check sampling params first.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <p style="font-size:14.5px;">Loop over <code>model.generate()</code> kwargs — <code>temperature</code>, <code>top_k</code>, <code>top_p</code>, <code>min_p</code>, <code>repetition_penalty</code>, <code>do_sample</code> — same prompt each time, write results to a markdown table.</p>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">04</span> Quantization &amp; Local Runtimes <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Run the same model at fp16 vs Q4_K_M (GGUF) and compare VRAM + output quality.</b> <span class="why">— makes the size/quality tradeoff tangible, not theoretical.</span></li>
+              <li><b>Read one GGUF quant table and explain Q4_K_M vs Q5_K_M.</b> <span class="why">— you'll pick this constantly for local work.</span></li>
+              <li><b>Load a model with bitsandbytes 4-bit directly inside Transformers.</b> <span class="why">— shows quantization is a general technique, not only a GGUF/Ollama thing.</span></li>
+              <li><b>Skim llama.cpp's README.</b> <span class="why">— when Ollama does something unexpected, you'll know where to look.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">GGUF quant levels</span><span class="tag">GPTQ</span><span class="tag">AWQ</span><span class="tag">bitsandbytes</span><span class="tag">llama.cpp</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Unlocks bigger models on small hardware</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Real quality loss below 4-bit; not every method suits every architecture</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Any time VRAM is the binding constraint — on a single machine, that's almost always.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">fp16 vs 4-bit vs Ollama GGUF, same model</div>
+              <pre class="code-snippet">from transformers import BitsAndBytesConfig
+
+# fp16
+AutoModelForCausalLM.from_pretrained(model_id, dtype=torch.float16)
+
+# 4-bit
+AutoModelForCausalLM.from_pretrained(
+    model_id, quantization_config=BitsAndBytesConfig(load_in_4bit=True)
+)
+# compare model.get_memory_footprint() and output quality across both,
+# plus the Ollama GGUF version via `ollama run &lt;model&gt;`</pre>
+            </div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">05</span> Context, Prompting &amp; Structured Output <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Feed a prompt near the model's max context length and observe the failure.</b> <span class="why">— makes "context window" a hard wall you've hit, not an abstract number.</span></li>
+              <li><b>Write a request as a raw string vs via <code>apply_chat_template</code>.</b> <span class="why">— mismatched templates are the #1 cause of "this model is dumb."</span></li>
+              <li><b>Ask for JSON with a plain instruction, then again with constrained decoding.</b> <span class="why">— shows the gap between hoping for a format and guaranteeing it.</span></li>
+              <li><b>Read how RoPE scaling / YaRN extend context beyond training length.</b> <span class="why">— explains why some "128k context" claims still degrade in practice.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">chat templates</span><span class="tag">few-shot prompting</span><span class="tag">constrained decoding</span><span class="tag">RoPE scaling</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Structured output massively simplifies downstream parsing</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Over-constraining can shave off quality/creativity</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Worth the setup cost the moment model output feeds into code rather than a human reading it directly.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Raw prompt vs the model's real chat template</div>
+              <pre class="code-snippet">raw = "List three uses for a paperclip."
+templated = tok.apply_chat_template(
+    [{"role": "user", "content": raw}],
+    tokenize=False, add_generation_prompt=True
+)
+# generate from both, compare</pre>
+            </div>
+            <p style="font-size:14.5px;">For constrained JSON: <code>pip install outlines pydantic</code>, define a <code>pydantic.BaseModel</code>, then use <code>outlines.from_transformers()</code> + <code>outlines.Generator(model, YourSchema)</code>.</p>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">06</span> Serving &amp; Evaluation <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Wrap a model in a minimal FastAPI endpoint using Transformers <code>.generate()</code>.</b> <span class="why">— your first "real" service, however slow.</span></li>
+              <li><b>Serve the same model with vLLM and compare latency on 20 prompts.</b> <span class="why">— makes the value of a real inference engine concrete rather than assumed.</span></li>
+              <li><b>Run lm-eval-harness against one small benchmark.</b> <span class="why">— gives you a number instead of a vibe for "is this model good."</span></li>
+              <li><b>Compute tokens/sec and $/1M tokens from your hardware setup.</b> <span class="why">— connects raw performance to what it would cost at real scale.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">FastAPI serving</span><span class="tag">vLLM continuous batching</span><span class="tag">lm-eval-harness</span><span class="tag">latency percentiles</span><span class="tag">cost-per-token</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>First point your work becomes something others could call</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>A single-request FastAPI wrapper falls over fast under real concurrency</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Once decoding/quantization choices are settled — serving is the integration step, not where you experiment.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Minimal FastAPI server</div>
+              <pre class="code-snippet">pip install fastapi uvicorn requests lm-eval</pre>
+              <pre class="code-snippet">from fastapi import FastAPI
+app = FastAPI()
+
+@app.post("/generate")
+def generate(prompt: str):
+    ...  # tokenize, model.generate(), decode, return
+
+# uvicorn myapp:app --port 8001
+# load test: 20 sequential requests.post() calls,
+# p50/p95 via statistics.median + a sorted-list index</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">vLLM — Linux + CUDA/ROCm/TPU only, no macOS wheels</div>
+              <pre class="code-snippet">pip install vllm</pre>
+              <pre class="code-snippet">from vllm import LLM, SamplingParams
+llm = LLM(model=model_id)
+llm.generate([prompt], SamplingParams(max_tokens=60))</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Benchmark with lm-eval-harness</div>
+              <pre class="code-snippet">pip install lm-eval
+lm_eval --model hf --model_args pretrained=&lt;model_id&gt; --tasks piqa --limit 20</pre>
+            </div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">07</span> Chat UI, Deep Trace &amp; One-Command Launcher <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Build a single static HTML file with vanilla JS <code>fetch()</code> calls to both your FastAPI endpoint and Ollama's own API directly.</b> <span class="why">— gives you one place to compare every model and backend side by side.</span></li>
+              <li><b>Add a model picker listing every model pulled in Subtrack 01, from both backends.</b> <span class="why">— forces the UI to actually route requests differently per backend, not just relabel a name.</span></li>
+              <li><b>Return extra fields from <code>/generate</code> you already compute for free — the chat-templated string, real token ids, first-token logits, architecture dimensions, hardware name, and which cache path the weights loaded from — and render them as a numbered trace before the final answer.</b> <span class="why">— turns "it just works" into something you can actually watch happen.</span></li>
+              <li><b>Add CORS middleware to FastAPI, and serve the HTML over a real <code>http://</code> server rather than opening the file directly.</b> <span class="why">— Ollama's origin allowlist accepts <code>http://127.0.0.1:*</code> but rejects the <code>null</code> origin a <code>file://</code> page sends.</span></li>
+              <li><b>Lazy-load one model at a time and evict the previous one before loading the next.</b> <span class="why">— loading every model at full precision at startup will OOM a laptop.</span></li>
+              <li><b>Write one launcher script that checks each port, starts whatever isn't running, polls health endpoints until they respond, runs a real smoke-test generation, then opens the UI.</b> <span class="why">— catches a crashed or OOM'd server before you're staring at a broken page.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">CORS</span><span class="tag">static file serving</span><span class="tag">output_scores / return_dict_in_generate</span><span class="tag">model eviction</span><span class="tag">health-check polling</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Makes every earlier subtrack's mechanics visible in one place — genuinely satisfying to watch</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Real engineering overhead beyond "just call the model" — CORS and memory management bite almost everyone who skips them</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Once Subtracks 01–06 each work individually — this is the integration exercise that ties the whole track together, not a starting point.</p></div>
+            <h4>MANUAL BUILD — NO AI ASSISTANT</h4>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">The two endpoints your UI talks to</div>
+              <pre class="code-snippet">http://127.0.0.1:8001/generate       # your FastAPI server
+http://127.0.0.1:11434/api/generate  # Ollama's own API</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Fix CORS, and serve the HTML over http:// not file://</div>
+              <pre class="code-snippet">from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:8080"],
+                    allow_methods=["*"], allow_headers=["*"])
+
+# then, in the folder with your HTML file:
+python3 -m http.server 8080</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">Get the trace fields for free from generate()</div>
+              <pre class="code-snippet">out = model.generate(
+    **inputs, output_scores=True, return_dict_in_generate=True
+)
+# out.scores[0] is already the first-token logits — no extra forward pass needed</pre>
+            </div>
+            <div class="code-snippet-wrap">
+              <div class="code-snippet-label">One-command launcher (bash sketch)</div>
+              <pre class="code-snippet">curl -s -o /dev/null &lt;url&gt;   # idempotent port check before starting anything
+nohup ... &amp;                  # start whatever isn't already running
+# poll health endpoint in a retry loop until it responds
+# run one real /generate call, check response isn't empty/too short
+open http://127.0.0.1:8080/chat_ui.html</pre>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">CONCEPTS &amp; THEORY</div>
+        <dl class="theory-grid">
+          <div class="theory-item"><dt>Autoregressive language modeling</dt><dd>The model predicts one next token at a time given everything before it — this single, simple objective is what produces the broad capability you see.</dd></div>
+          <div class="theory-item"><dt>Embeddings &amp; vector space</dt><dd>Tokens become vectors of numbers; tokens with similar meaning end up near each other in that space.</dd></div>
+          <div class="theory-item"><dt>Attention, intuitively</dt><dd>Each token "looks at" every other token with a learned weight, deciding what's relevant to predicting what comes next.</dd></div>
+          <div class="theory-item"><dt>Softmax &amp; probability</dt><dd>Raw model scores (logits) get converted into a proper probability distribution over the vocabulary before a token is sampled.</dd></div>
+          <div class="theory-item"><dt>Why long context is expensive</dt><dd>Standard attention cost grows roughly quadratically with sequence length — the direct reason context windows aren't unlimited and the KV cache matters so much.</dd></div>
+          <div class="theory-item"><dt>Quantization theory</dt><dd>Fewer bits per weight means less memory and faster math, at a precision cost — and not every layer is equally sensitive to that cost.</dd></div>
+        </dl>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">DEEP DIVE — OLLAMA vs HF TRANSFORMERS, AND WHERE LLAMA.CPP / VLLM FIT</div>
+        <p style="font-size:15px;color:var(--muted);margin-top:12px;line-height:1.6;">These four aren't competing choices — they sit at different layers of the same stack. Ollama and Transformers are two ways to <i>load and run</i> a model; llama.cpp and vLLM are the <i>engines</i> underneath that actually execute the math. Here's exactly how each differs, procedurally.</p>
+
+        <table class="cmp-table">
+          <thead><tr><th>Aspect</th><th>Ollama</th><th>HF Transformers</th></tr></thead>
+          <tbody>
+            <tr><td class="opt-cell" data-label="Aspect">What it is</td><td data-label="Ollama">A packaged application — a CLI + background server, built on top of llama.cpp</td><td data-label="Transformers">A Python library — you import it and write the inference code yourself</td></tr>
+            <tr><td class="opt-cell" data-label="Aspect">Model format</td><td data-label="Ollama">GGUF, pre-quantized (Q4_K_M, Q5_K_M, etc.)</td><td data-label="Transformers">safetensors, typically full precision (fp16/bf16) unless you quantize it yourself</td></tr>
+            <tr><td class="opt-cell" data-label="Aspect">How you start it</td><td data-label="Ollama"><span class="mono"><code>ollama pull llama3</code></span> then <span class="mono"><code>ollama run llama3</code></span></td><td data-label="Transformers"><span class="mono"><code>AutoModelForCausalLM.from_pretrained(...)</code></span> + <span class="mono"><code>AutoTokenizer.from_pretrained(...)</code></span></td></tr>
+            <tr><td class="opt-cell" data-label="Aspect">What's visible to you</td><td data-label="Ollama">Nothing internal — tokenization, forward pass, and sampling all happen inside the server process</td><td data-label="Transformers">Everything — token IDs, logits, attention masks, KV cache tensors, all inspectable in Python</td></tr>
+            <tr><td class="opt-cell" data-label="Aspect">Customizing behavior</td><td data-label="Ollama">A Modelfile (system prompt, a few sampling params, stop sequences) — limited</td><td data-label="Transformers">Full control — write your own decoding loop, change sampling logic, modify the model itself</td></tr>
+            <tr><td class="opt-cell" data-label="Aspect">Serving an API</td><td data-label="Ollama">Built in — a local REST server starts automatically (<span class="mono"><code>ollama serve</code></span>)</td><td data-label="Transformers">Nothing built in — you wrap it yourself (FastAPI) or hand off to vLLM/TGI</td></tr>
+            <tr><td class="opt-cell" data-label="Aspect">Best for</td><td data-label="Ollama">Getting a model running immediately, comparing models, everyday local use</td><td data-label="Transformers">Learning how inference actually works, debugging, research, custom pipelines</td></tr>
+          </tbody>
+        </table>
+
+        <div class="pc-grid" style="margin-top:20px;">
+          <div class="pc-box pro">
+            <span class="pc-label">PROCEDURE — RUNNING A MODEL VIA OLLAMA</span>
+            <ol class="steps">
+              <li><b>Install Ollama</b> — one binary; it runs a background server.</li>
+              <li><b>ollama pull &lt;model&gt;</b> — downloads a pre-quantized GGUF file.</li>
+              <li><b>ollama run &lt;model&gt;</b> — Ollama loads the GGUF into llama.cpp under the hood and opens a chat prompt.</li>
+              <li>Every prompt is tokenized, run through llama.cpp, and streamed back — all inside the Ollama process, invisible to you.</li>
+              <li>Optionally query the same model over <b>localhost:11434</b> as a REST API — no extra setup.</li>
+            </ol>
+          </div>
+          <div class="pc-box con">
+            <span class="pc-label">PROCEDURE — RUNNING A MODEL VIA TRANSFORMERS</span>
+            <ol class="steps">
+              <li><b>pip install transformers torch</b> — a Python library, not an app.</li>
+              <li><b>AutoTokenizer.from_pretrained(model_id)</b> — load the tokenizer explicitly.</li>
+              <li><b>AutoModelForCausalLM.from_pretrained(model_id)</b> — load the full-precision weights into memory yourself.</li>
+              <li>Call <b>tokenizer.encode()</b>, then <b>model.generate()</b> (or write your own loop) — every intermediate tensor is one line of code away from being printed and inspected.</li>
+              <li>No server, no API — that's a separate step you build (FastAPI, vLLM) if you want one.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">HOW LLAMA.CPP WORKS, AND WHEN TO USE IT DIRECTLY</div>
+        <div class="use-box"><b>What it is:</b> a C++ inference engine that runs quantized (GGUF) models efficiently on CPU and GPU, with no Python dependency at all. Ollama, LM Studio, and GPT4All are all thin wrappers around it — when you run a model in Ollama, llama.cpp is the code actually doing the matrix math underneath.</div>
+        <ol class="steps" style="margin-top:14px;">
+          <li><b>How it works:</b> it loads a GGUF file (weights pre-quantized to 4/5/8-bit), builds a compute graph for the transformer, and executes it with hand-optimized CPU kernels (plus optional GPU offload for some layers) — no PyTorch, no Python runtime overhead.</li>
+          <li><b>When to use it directly instead of Ollama:</b> when you need a setting Ollama doesn't expose (a specific context length, a custom CPU/GPU layer split, grammar-constrained output), or you're deploying to a device where even Ollama's overhead is unwelcome (embedded, mobile, edge).</li>
+          <li><b>How to use it:</b> clone and build the repo, then run its built-in server binary directly — <span class="mono"><code>./llama-server -m model.gguf -c 4096 -ngl 20</code></span> starts an OpenAI-compatible API with full control over context size (<code>-c</code>) and how many layers offload to GPU (<code>-ngl</code>).</li>
+        </ol>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">HOW VLLM WORKS, AND WHEN TO USE IT</div>
+        <div class="use-box"><b>What it is:</b> a production-grade inference engine for serving full-precision (or quantized) Transformers-format models with high throughput — the step up from "a model that runs" to "a model that serves many requests at once, fast."</div>
+        <ol class="steps" style="margin-top:14px;">
+          <li><b>How it works — PagedAttention:</b> manages the KV cache in fixed-size, non-contiguous memory "pages" instead of one big pre-allocated block per request, the way an OS manages virtual memory — this eliminates the memory fragmentation that would otherwise waste a large fraction of GPU memory.</li>
+          <li><b>How it works — continuous batching:</b> instead of waiting for a whole batch of requests to finish before starting the next batch, vLLM slots new requests into a running batch the moment a GPU "seat" frees up — a large part of why its throughput beats a naive serving loop.</li>
+          <li><b>When to use it:</b> the moment you have more than one concurrent user, or you're benchmarking real latency/throughput rather than just "does it work" — a hand-rolled FastAPI + <code>.generate()</code> endpoint falls over fast under load; vLLM is built for exactly this.</li>
+          <li><b>How to use it:</b> <span class="mono"><code>pip install vllm</code></span>, then <span class="mono"><code>vllm serve &lt;model_id&gt;</code></span> — starts an OpenAI-compatible API server, handling batching and the KV cache for you automatically.</li>
+        </ol>
+      </section>
+
+      <div class="use-box"><b>When should you use this track?</b> Whenever you need an existing capability without customization — prototyping, personal tools, or deciding whether an open model is good enough for a task at all. If prompting and retrieval genuinely solve your problem, stop here; you don't need Track B or C.</div>
+
+      <section class="subtrack-list">
+        <div class="section-title">INTERVIEW QUESTIONS</div>
+        <div class="interview-list">
+          <div class="interview-item"><div class="q"><span class="qn">01</span>What does the KV cache save you from redoing on every generated token?</div><div class="hint">Good answers explain that without it, each new token would require re-running attention over the entire sequence from scratch.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">02</span>Why does raising temperature increase diversity but risk coherence?</div><div class="hint">Flattening the probability distribution makes lower-probability, less "safe" tokens more likely to get picked.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">03</span>What's the practical difference between top-k and top-p sampling?</div><div class="hint">top-k fixes the candidate pool size; top-p adapts pool size to the shape of the distribution at each step.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">04</span>What does quantization trade away, and why do 4-bit models often still work well?</div><div class="hint">Numeric precision, not capability — most weights carry redundancy that lower precision doesn't meaningfully disturb.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">05</span>Why can identical model weights produce worse outputs with the wrong chat template?</div><div class="hint">The model was trained to expect a specific token structure; deviating from it puts it outside its training distribution.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">06</span>What's the time complexity of self-attention with respect to sequence length, and why does it matter?</div><div class="hint">Roughly O(n²) — directly explains why long-context serving is expensive and why techniques like PD disaggregation exist upstream.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">07</span>How would you decide between a hand-rolled FastAPI endpoint and vLLM for serving?</div><div class="hint">Concurrency and throughput requirements — a single-user prototype doesn't need continuous batching; real traffic does.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">08</span>What's the difference between latency and throughput, and why can optimizing one hurt the other?</div><div class="hint">Batching improves throughput but can increase individual request latency — the classic serving tradeoff.</div></div>
+        </div>
+      </section>
+
+      <div class="use-box"><b>What to expect Claude Code to do — and what it can't fully solve alone:</b> it will create a venv, write and run Python scripts, and download real model weights (a few GB total). Two things it hits that need you: <b>Ollama isn't pre-installed</b> — it'll ask you to run <code>brew install ollama</code> (or your OS equivalent) and start <code>ollama serve</code> yourself, since that's an interactive step. And <b>vLLM has no macOS build</b> (Linux + CUDA/ROCm/TPU only) — on a Mac or any machine without an Nvidia/AMD GPU, expect it to write real vLLM code but tell you it can't execute that one piece locally, and suggest Colab or a rented GPU box instead of faking a result.</div>
+
+      <div class="prompt-block">
+        <div class="prompt-head">
+          <span class="t"><span class="sq"></span>CLAUDE CODE PROMPT — llm-inference-lab</span>
+          <button class="copy-btn" data-target="prompt-a">Copy</button>
+        </div>
+        <pre class="prompt-text" id="prompt-a">I'm a novice building hands-on fluency in LLM inference. Set up a project called `llm-inference-lab` that takes me from zero to a working local inference + serving stack, with a chat UI at the end. Work in stages, and pause after each stage for me to run and review before continuing.
+
+<span class="stage">Stage 1 — Environment:</span> Python 3.10+ venv, requirements.txt (transformers, torch, huggingface_hub, accelerate), README, and a script that verifies GPU/CPU/MPS availability with a real matmul, not just a flag check.
+
+<span class="stage">Stage 2 — Model ecosystem:</span> download two small open instruct models (under 3B params) via huggingface_hub, and the same two via Ollama. Document each model's license and prompt format in MODELS.md.
+
+<span class="stage">Stage 3 — Tokenization & generation internals:</span> one script that (a) encodes/decodes text with the tokenizer alone, (b) prints logits for the first generated token, (c) manually traces past_key_values shapes across 2 decoding steps, (d) implements greedy decoding in a bare loop without calling .generate().
+
+<span class="stage">Stage 4 — Decoding strategies:</span> a script that runs the same prompt at multiple temperature/top-p/top-k/min-p settings and repetition penalties, saving outputs to a markdown table.
+
+<span class="stage">Stage 5 — Quantization:</span> load the same model at fp16, 4-bit (bitsandbytes), and via an Ollama GGUF quant; report memory usage and output quality for each.
+
+<span class="stage">Stage 6 — Prompting & structured output:</span> a script comparing a raw prompt string vs the model's real chat template, and a second script that forces JSON output via a constrained-decoding library.
+
+<span class="stage">Stage 7 — Serving & evaluation:</span> a minimal FastAPI endpoint using Transformers generate(), a second endpoint using vLLM for the same model, a load-testing script that fires 20 prompts at each and reports latency (p50/p95) and tokens/sec, and a run against lm-eval-harness on one small benchmark.
+
+<span class="stage">Then — chat UI + deep trace:</span> build a browser chat UI that can talk to both the Transformers endpoint and Ollama directly, with a model picker for every model downloaded in Stage 2, and — this is the important part — make it show a detailed step-by-step trace of what's actually happening internally for each request (which file handled it, real token ids, real first-token logits, real architecture dimensions, real hardware name, which cache path the weights loaded from) before showing the final answer. Also give me one script that starts every required service, waits for each to actually respond, runs a smoke-test generation to catch a broken/OOM'd server, and opens the UI.
+
+Throughout: explain what each script demonstrates in plain comments, keep everything runnable on a single consumer GPU (CPU/MPS fallback for the tokenization stages), and end with a SUMMARY.md capturing what I should now understand from each stage. Tell me up front if anything needs something from me (accounts, installs, hardware I don't have).</pre>
+      </div>
+
+      <footer class="note">Next: use this track's serving skills to host whatever you build in Track B or C.</footer>
+    </section>
+
+    <!-- ============================================================ TRACK B ============================================================ -->
+    <section class="track-panel" id="panel-b" style="--track:#B5651D;--track-soft:#F4E8D9;">
+      <div class="track-head">
+        <span class="track-label">TRACK B</span>
+        <h2>Fine-Tuning</h2>
+        <p class="track-sub">Adaptation fluency: take a base or instruct model and specialize it — SFT, LoRA/QLoRA, and preference tuning, evaluated rather than assumed.</p>
+      </div>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 900 170" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#B5651D"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="12.5">
+            <rect x="10" y="60" width="130" height="46" rx="3" fill="#F4E8D9" stroke="#B5651D"/>
+            <text x="75" y="88" text-anchor="middle" fill="#1B1D19">Base model</text>
+
+            <rect x="10" y="10" width="130" height="40" rx="3" fill="#fff" stroke="#B5651D" stroke-dasharray="3 3"/>
+            <text x="75" y="35" text-anchor="middle" fill="#63665D">Curated data</text>
+            <line x1="75" y1="50" x2="75" y2="60" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+            <line x1="140" y1="83" x2="180" y2="83" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+            <rect x="180" y="60" width="90" height="46" rx="3" fill="#fff" stroke="#B5651D"/>
+            <text x="225" y="88" text-anchor="middle" fill="#1B1D19">SFT</text>
+
+            <line x1="270" y1="83" x2="310" y2="83" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+            <rect x="310" y="60" width="160" height="46" rx="3" fill="#F4E8D9" stroke="#B5651D"/>
+            <text x="390" y="88" text-anchor="middle" fill="#1B1D19">Instruct model</text>
+
+            <rect x="310" y="10" width="160" height="40" rx="3" fill="#fff" stroke="#B5651D" stroke-dasharray="3 3"/>
+            <text x="390" y="35" text-anchor="middle" fill="#63665D">Preference pairs</text>
+            <line x1="390" y1="50" x2="390" y2="60" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+            <line x1="470" y1="83" x2="510" y2="83" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+            <rect x="510" y="60" width="90" height="46" rx="3" fill="#fff" stroke="#B5651D"/>
+            <text x="555" y="88" text-anchor="middle" fill="#1B1D19">DPO</text>
+
+            <line x1="600" y1="83" x2="640" y2="83" stroke="#B5651D" stroke-width="1.5" marker-end="url(#arrowB)"/>
+
+            <rect x="640" y="60" width="160" height="46" rx="3" fill="#F4E8D9" stroke="#B5651D"/>
+            <text x="720" y="88" text-anchor="middle" fill="#1B1D19">Aligned model</text>
+          </g>
+          <text x="10" y="145" font-family="IBM Plex Mono, monospace" font-size="12" fill="#63665D">dashed = data you prepare · solid = training stage</text>
+        </svg>
+      </div>
+
+      <div class="meta-row">
+        <div><span class="k">HARDWARE</span>1–4 GPUs</div>
+        <div><span class="k">TIME BUDGET</span>2–3 weeks</div>
+        <div><span class="k">GATES</span>Do Track A first</div>
+      </div>
+
+      <section class="subtrack-list">
+        <div class="section-title">SUBTRACKS</div>
+
+        <details class="subtrack" open>
+          <summary><span class="idx">01</span> Deciding to Fine-Tune &amp; Curating Data <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Write down the exact task the base model fails at with best prompting.</b> <span class="why">— fine-tuning without a documented gap is fine-tuning blind.</span></li>
+              <li><b>Try RAG or better prompting first on 10 real examples.</b> <span class="why">— many "fine-tuning" needs are actually retrieval/prompting gaps, cheaper to fix.</span></li>
+              <li><b>Hand-write 50–100 examples in the target format before generating more.</b> <span class="why">— surfaces format/edge-case problems synthetic generation hides.</span></li>
+              <li><b>Deduplicate and check for leakage into your eval set.</b> <span class="why">— contamination silently inflates your later "it worked!" result.</span></li>
+              <li><b>Scale to 500–1000 examples: hand-written + reviewed synthetic.</b> <span class="why">— reviewed small data beats large unreviewed data for SFT.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">RAG vs fine-tuning</span><span class="tag">instruction format</span><span class="tag">synthetic data</span><span class="tag">train/eval contamination</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Forces clarity on the real problem before spending GPU time</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Genuinely tedious — tempting to skip straight to training</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Every fine-tuning project, no exceptions — this is the step people skip and later regret.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">02</span> SFT Mechanics &amp; Tooling <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Install transformers, trl, peft, bitsandbytes, accelerate.</b> <span class="why">— the standard stack you'll reuse for every method after this.</span></li>
+              <li><b>Apply the exact chat template you intend to use at inference.</b> <span class="why">— a train/inference template mismatch quietly ruins results.</span></li>
+              <li><b>Mask loss on the prompt tokens, train only on completions.</b> <span class="why">— without this the model partly "learns" to predict your own instructions.</span></li>
+              <li><b>Turn on sequence packing for short examples.</b> <span class="why">— big throughput gain, negligible downside.</span></li>
+              <li><b>Run a tiny 50-step smoke test before a full run.</b> <span class="why">— catches broken configs before burning hours of GPU time.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">loss masking</span><span class="tag">sequence packing</span><span class="tag">SFTTrainer</span><span class="tag">gradient checkpointing</span><span class="tag">mixed precision</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Standard, well-documented, works full or partial</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Full fine-tuning needs meaningfully more VRAM than PEFT</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>SFT is the baseline for any adaptation task — do it before LoRA/QLoRA so you have the full-fine-tune reference point.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">03</span> Parameter-Efficient Fine-Tuning (LoRA / QLoRA) <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Repeat your SFT run with a LoRA adapter instead of full weights.</b> <span class="why">— directly compare full fine-tune vs LoRA on the same data/model.</span></li>
+              <li><b>Try rank=8 and rank=32 on the same task.</b> <span class="why">— builds intuition for the rank/capacity tradeoff instead of guessing.</span></li>
+              <li><b>Load the base model in 4-bit and repeat as QLoRA.</b> <span class="why">— shows how much VRAM QLoRA actually saves vs fp16 LoRA.</span></li>
+              <li><b>Merge the adapter back into base weights; compare inference speed.</b> <span class="why">— merged models serve like normal models; unmerged need adapter-aware serving.</span></li>
+              <li><b>Try Unsloth on the same task and compare training speed.</b> <span class="why">— shows the gap between "correct" and "fast" implementations.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">low-rank decomposition</span><span class="tag">LoRA rank/alpha</span><span class="tag">NF4 quantization</span><span class="tag">adapter merging</span><span class="tag">Unsloth / Axolotl</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Trains on a single consumer GPU, fast iteration</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Slightly lower ceiling than full fine-tuning on large distribution shifts</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>The default choice for almost all practical fine-tuning — reach for full fine-tuning only once LoRA demonstrably underperforms.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">04</span> Preference Tuning &amp; Alignment <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Generate 2 responses per prompt on 50–100 prompts from your SFT model.</b> <span class="why">— you need response pairs to express a preference between.</span></li>
+              <li><b>Label which response is better (yourself or LLM-as-judge).</b> <span class="why">— this is the signal DPO trains on; its quality gates everything downstream.</span></li>
+              <li><b>Run DPO on top of the SFT model using the preference pairs.</b> <span class="why">— the practical, most-used alignment method, far cheaper than full RLHF.</span></li>
+              <li><b>Compare DPO vs SFT-only outputs on held-out prompts.</b> <span class="why">— alignment should show up as measurable, not just felt.</span></li>
+              <li><b>Read how RLHF's reward-model + PPO loop works, without implementing it.</b> <span class="why">— gives you the vocabulary to reason about it even if you never run PPO yourself.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">preference datasets</span><span class="tag">DPO</span><span class="tag">RLHF (reward model + PPO)</span><span class="tag">KTO / ORPO</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Simple to run, meaningfully shapes tone/behavior</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Bad preference data causes reward-hacking-like behavior</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Once SFT alone isn't giving you the right behavior/tone — not a required step for every fine-tune.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">05</span> Evaluating &amp; Serving a Fine-Tune <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Build a held-out eval set (30–50 examples) untouched by training.</b> <span class="why">— without this you can't honestly claim the fine-tune worked.</span></li>
+              <li><b>Score base vs SFT vs DPO on the same eval set.</b> <span class="why">— isolates exactly what each stage contributed.</span></li>
+              <li><b>Test 5–10 prompts unrelated to your task.</b> <span class="why">— catches catastrophic forgetting: quiet general-capability loss.</span></li>
+              <li><b>Serve via a multi-adapter-aware server (vLLM supports LoRA directly) instead of merging.</b> <span class="why">— lets you host several fine-tunes off one base efficiently.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">held-out eval</span><span class="tag">LLM-as-judge</span><span class="tag">catastrophic forgetting</span><span class="tag">multi-LoRA serving</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Closes the loop from "I fine-tuned something" to proof it's better</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Building a good eval set is as much work as the fine-tune itself</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Non-negotiable last step of every fine-tuning project — an unevaluated fine-tune is an unfinished one.</p></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">CONCEPTS &amp; THEORY</div>
+        <dl class="theory-grid">
+          <div class="theory-item"><dt>Transfer learning</dt><dd>Starting from a pretrained model is dramatically cheaper than training from scratch because it already encodes general language and world knowledge.</dd></div>
+          <div class="theory-item"><dt>Loss masking</dt><dd>Predicting the prompt itself isn't the objective — only completion tokens should contribute to the training signal.</dd></div>
+          <div class="theory-item"><dt>Low-rank adaptation, intuitively</dt><dd>A large weight update can often be well-approximated by the product of two much smaller matrices — that approximation is the entire idea behind LoRA.</dd></div>
+          <div class="theory-item"><dt>Preference optimization</dt><dd>DPO reframes "align to human preference" as a classification-like objective over response pairs, without a separate reward model or an RL loop.</dd></div>
+          <div class="theory-item"><dt>Catastrophic forgetting</dt><dd>Gradient updates on a narrow dataset can overwrite general capabilities that weren't reinforced during fine-tuning.</dd></div>
+          <div class="theory-item"><dt>Overfitting on small data</dt><dd>A narrow, small fine-tuning set risks the model memorizing examples rather than generalizing the underlying behavior.</dd></div>
+        </dl>
+      </section>
+
+      <div class="use-box"><b>When should you use this track?</b> When prompting and retrieval genuinely can't get the exact behavior, tone, or output-format reliability you need, and you have — or can build — a few hundred quality-labeled examples. Skip it if the need is pure knowledge lookup (that's RAG territory) or you don't have enough examples to avoid overfitting.</div>
+
+      <section class="subtrack-list">
+        <div class="section-title">INTERVIEW QUESTIONS</div>
+        <div class="interview-list">
+          <div class="interview-item"><div class="q"><span class="qn">01</span>When would you choose LoRA over full fine-tuning, and vice versa?</div><div class="hint">LoRA for most practical adaptation on limited hardware; full fine-tuning when the task needs a bigger distribution shift than low-rank updates can capture.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">02</span>What does "rank" control in a LoRA adapter?</div><div class="hint">The capacity/expressiveness of the low-rank update — higher rank approaches full fine-tuning capacity at higher cost.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">03</span>Why does QLoRA quantize the base model but keep the adapter in higher precision?</div><div class="hint">The frozen base just needs to be read cheaply; the adapter is what's actually being trained and needs precision for stable gradients.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">04</span>What problem does DPO solve that plain SFT doesn't?</div><div class="hint">SFT teaches "produce this output"; DPO teaches "prefer this output over that one," a better fit for tone/style/safety shaping.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">05</span>How would you detect catastrophic forgetting in a fine-tuned model?</div><div class="hint">Probe with prompts unrelated to the fine-tuning task and compare against the pre-fine-tune baseline.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">06</span>Why is a held-out eval set non-negotiable?</div><div class="hint">Without one, you can't distinguish genuine improvement from memorization of the training data itself.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">07</span>What's the risk of using an LLM-as-judge for evaluation?</div><div class="hint">Judge models carry their own biases and blind spots — mitigate with rubric-based prompts and periodic human spot-checks.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">08</span>How would you serve five different LoRA fine-tunes of the same base model efficiently?</div><div class="hint">Keep adapters unmerged and use a multi-adapter-aware server like vLLM instead of hosting five separate merged models.</div></div>
+        </div>
+      </section>
+
+      <div class="prompt-block">
+        <div class="prompt-head">
+          <span class="t"><span class="sq"></span>CLAUDE CODE PROMPT — llm-finetune-lab</span>
+          <button class="copy-btn" data-target="prompt-b">Copy</button>
+        </div>
+        <pre class="prompt-text" id="prompt-b">I'm a novice learning to fine-tune LLMs. Set up a project called `llm-finetune-lab` that takes a small open base model through SFT and DPO, in stages, pausing after each for my review.
+
+<span class="stage">Stage 1 — Decide & scope:</span> Create a DECISION.md template documenting the exact task gap I'm addressing, and a script to test the base model + best prompting on 10 real examples first, so I can confirm fine-tuning is actually warranted before proceeding.
+
+<span class="stage">Stage 2 — Dataset curation:</span> Set up a data/ folder and a script that validates a JSONL instruction dataset (format, dedup check, contamination check against a held-out eval file I'll create). Include 20 hand-written example entries as a starter template in the target chat format.
+
+<span class="stage">Stage 3 — SFT:</span> Install transformers, trl, peft, bitsandbytes, accelerate. Write an SFT training script using SFTTrainer with prompt-loss-masking enabled and sequence packing on, plus a tiny 50-step smoke-test config to validate before a full run.
+
+<span class="stage">Stage 4 — LoRA/QLoRA:</span> Extend the training script with a --method flag supporting full fine-tune, LoRA (configurable rank), and QLoRA (4-bit base + LoRA). Add a script to merge a trained adapter back into the base model, and a benchmark script comparing training VRAM/time across methods.
+
+<span class="stage">Stage 5 — Preference tuning:</span> Write a script that generates 2 completions per prompt from the SFT model for a set of prompts, a labeling helper (CLI or simple web form) to mark which is preferred, and a DPO training script that consumes the resulting preference pairs.
+
+<span class="stage">Stage 6 — Evaluation:</span> Build a held-out eval harness (distinct from training data) that scores base model vs SFT model vs DPO model on the same prompts, plus a small "unrelated capability" probe set to check for catastrophic forgetting. Output a comparison report.
+
+<span class="stage">Stage 7 — Serving:</span> Set up vLLM with LoRA adapter support so the fine-tuned adapter can be served without merging, and document how to swap adapters at request time.
+
+Throughout: keep dataset sizes small (hundreds, not millions) so every stage runs on a single consumer GPU, comment each script's purpose, and end with a SUMMARY.md documenting what each stage taught me.</pre>
+      </div>
+
+      <footer class="note">Next: if you built your own base model in Track C, this is exactly where it enters — Stage 3 onward applies directly to it.</footer>
+    </section>
+
+    <!-- ============================================================ TRACK C ============================================================ -->
+    <section class="track-panel" id="panel-c" style="--track:#4C3A8C;--track-soft:#EAE3F6;">
+      <div class="track-head">
+        <span class="track-label">TRACK C</span>
+        <h2>Pretraining an SLM</h2>
+        <p class="track-sub">Builder fluency: the full pretraining pipeline for a small model — data, tokenizer, architecture, training loop, and evaluation, end to end.</p>
+      </div>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 900 190" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowC" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4C3A8C"/></marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="12">
+            <rect x="10" y="20" width="110" height="44" rx="3" fill="#fff" stroke="#4C3A8C"/>
+            <text x="65" y="47" text-anchor="middle" fill="#1B1D19">Raw data</text>
+            <line x1="120" y1="42" x2="155" y2="42" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <rect x="155" y="20" width="120" height="44" rx="3" fill="#fff" stroke="#4C3A8C"/>
+            <text x="215" y="47" text-anchor="middle" fill="#1B1D19">Clean / dedupe</text>
+            <line x1="275" y1="42" x2="310" y2="42" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <rect x="310" y="20" width="130" height="44" rx="3" fill="#fff" stroke="#4C3A8C"/>
+            <text x="375" y="47" text-anchor="middle" fill="#1B1D19">Train tokenizer</text>
+            <line x1="440" y1="42" x2="475" y2="42" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <rect x="475" y="20" width="140" height="44" rx="3" fill="#EAE3F6" stroke="#4C3A8C"/>
+            <text x="545" y="47" text-anchor="middle" fill="#1B1D19">Tokenized dataset</text>
+
+            <!-- architecture joins from below -->
+            <rect x="475" y="100" width="140" height="44" rx="3" fill="#fff" stroke="#4C3A8C"/>
+            <text x="545" y="127" text-anchor="middle" fill="#1B1D19">Architecture</text>
+            <line x1="545" y1="100" x2="545" y2="70" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <line x1="615" y1="42" x2="650" y2="42" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <rect x="650" y="20" width="130" height="44" rx="3" fill="#fff" stroke="#4C3A8C"/>
+            <text x="715" y="47" text-anchor="middle" fill="#1B1D19">Training loop</text>
+            <line x1="780" y1="42" x2="815" y2="42" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <rect x="650" y="100" width="130" height="44" rx="3" fill="#fff" stroke="#4C3A8C"/>
+            <text x="715" y="127" text-anchor="middle" fill="#1B1D19">Checkpoints + eval</text>
+            <line x1="715" y1="100" x2="715" y2="70" stroke="#4C3A8C" stroke-width="1.5" marker-end="url(#arrowC)"/>
+
+            <rect x="810" y="20" width="80" height="44" rx="3" fill="#EAE3F6" stroke="#4C3A8C"/>
+            <text x="850" y="40" text-anchor="middle" fill="#1B1D19" font-size="11">Base</text>
+            <text x="850" y="53" text-anchor="middle" fill="#1B1D19" font-size="11">model</text>
+          </g>
+          <text x="10" y="180" font-family="IBM Plex Mono, monospace" font-size="12" fill="#B5651D">base model → hands off to Track B for SFT</text>
+        </svg>
+      </div>
+
+      <div class="meta-row">
+        <div><span class="k">HARDWARE</span>1–8 GPUs, days not hours</div>
+        <div><span class="k">TIME BUDGET</span>3–4 weeks</div>
+        <div><span class="k">GATES</span>Track A fluency helps; run alongside Track A's data-heavier steps</div>
+      </div>
+
+      <section class="subtrack-list">
+        <div class="section-title">SUBTRACKS</div>
+
+        <details class="subtrack" open>
+          <summary><span class="idx">01</span> Data Pipeline &amp; Tokenizer <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Download a small (1–10GB) slice of an open pretraining dataset (e.g. FineWeb-Edu).</b> <span class="why">— full-scale crawl data is unnecessary and unmanageable for an SLM learning project.</span></li>
+              <li><b>Run a basic quality filter and measure how much data it removes.</b> <span class="why">— shows firsthand how much raw web data is actually junk.</span></li>
+              <li><b>Run MinHash deduplication on your slice.</b> <span class="why">— duplicate data wastes compute and can cause memorization artifacts.</span></li>
+              <li><b>Train a BPE tokenizer from scratch at two vocab sizes.</b> <span class="why">— makes the vocab-size tradeoff (sequence length vs embedding table size) concrete.</span></li>
+              <li><b>Tokenize and pack the dataset into fixed-length sequences.</b> <span class="why">— this is the actual input format your training loop consumes.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">Common Crawl derivatives</span><span class="tag">quality filtering</span><span class="tag">MinHash dedup</span><span class="tag">BPE training</span><span class="tag">sequence packing</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Teaches what "data quality" concretely means</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Tedious, easy to underinvest in — most first attempts fail here</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Always first, and budget more time here than feels necessary — this is the highest-leverage stage in the entire track.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">02</span> Architecture Design <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Implement a minimal decoder-only block (attention + MLP + residuals), no tricks.</b> <span class="why">— forces you to understand the base architecture before adding complexity.</span></li>
+              <li><b>Add RoPE and verify generation still works.</b> <span class="why">— standard in every modern open model; understand it by implementing it once.</span></li>
+              <li><b>Swap LayerNorm→RMSNorm and add SwiGLU; compare training stability.</b> <span class="why">— these specific changes separate GPT-2-era models from modern ones.</span></li>
+              <li><b>Implement grouped-query attention; calculate KV-cache memory savings.</b> <span class="why">— makes the inference-time payoff tangible, not just theoretical.</span></li>
+              <li><b>Pick a target param count and work backward to depth/width.</b> <span class="why">— prevents architecture choices that are needlessly hard to train or serve later.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">attention math</span><span class="tag">RoPE</span><span class="tag">RMSNorm</span><span class="tag">SwiGLU</span><span class="tag">grouped-query attention</span><span class="tag">depth/width tradeoffs</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Where "I understand transformers" becomes true, not assumed</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Easy to over-engineer — the SLM recipe has mostly converged</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>After your data pipeline works, not before — a great architecture on bad data still produces a bad model.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">03</span> Pretraining Loop &amp; Mechanics <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Start from nanoGPT or litGPT rather than writing the loop fully from scratch.</b> <span class="why">— read-then-write: the scaffold encodes solved problems you don't need to re-solve.</span></li>
+              <li><b>Swap in your own architecture and confirm it trains on a toy dataset.</b> <span class="why">— isolates architecture bugs from training-loop bugs.</span></li>
+              <li><b>Set AdamW + cosine LR schedule + warmup; log loss every N steps.</b> <span class="why">— this specific recipe is what makes transformer pretraining stable in practice.</span></li>
+              <li><b>Deliberately induce a loss spike and practice recovering from checkpoint.</b> <span class="why">— loss spikes happen in real runs; build the recovery muscle memory before it costs you one.</span></li>
+              <li><b>Run the full training job on your prepared dataset, checkpointing regularly.</b> <span class="why">— everything before this was rehearsal; this is the actual pretraining run.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">AdamW</span><span class="tag">cosine LR + warmup</span><span class="tag">gradient clipping</span><span class="tag">checkpointing</span><span class="tag">nanoGPT / litGPT</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Scaffold gets you to a real run fast, on proven infrastructure</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Leaning on it without reading internals means you haven't really learned the mechanics</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>The centerpiece of Track C — expect it to be the single longest-running step, hours to days depending on hardware.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">04</span> Multi-GPU Basics &amp; Reading Reference Code <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>If you have 2+ GPUs, wrap the loop in PyTorch DDP; confirm loss curves match single-GPU.</b> <span class="why">— single-node multi-GPU is a real, learnable step short of the multi-node infra you're deliberately deferring.</span></li>
+              <li><b>Read one modern small model's open training code end to end without running it.</b> <span class="why">— read-before-write again: seeing a production version of what you built cements the concepts.</span></li>
+              <li><b>Diff your implementation against the reference for 2–3 specific choices.</b> <span class="why">— turns passive reading into an active comparison of what you'd do differently and why.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">DistributedDataParallel</span><span class="tag">FSDP (awareness only)</span><span class="tag">reference model repos</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Cheap way to benchmark your understanding against real production code</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Don't chase full FSDP/multi-node mastery here — that's a later, separate track</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>In parallel with the training-loop step, not before — reading reference code means more once you have your own implementation to compare it to.</p></div>
+          </div>
+        </details>
+
+        <details class="subtrack">
+          <summary><span class="idx">05</span> Evaluation &amp; Handoff to Fine-Tuning <span class="chev">▸</span></summary>
+          <div class="subtrack-body">
+            <h4>STEPS FROM ZERO</h4>
+            <ol class="steps">
+              <li><b>Track held-out loss/perplexity throughout training, not just training loss.</b> <span class="why">— training loss alone can look great while the model is simply memorizing.</span></li>
+              <li><b>Run generation sanity checks at several checkpoints and save outputs.</b> <span class="why">— watch the model go from gibberish to coherent text — the most satisfying debugging signal in this curriculum.</span></li>
+              <li><b>Run a lightweight lm-eval-harness pass once training completes.</b> <span class="why">— a number to compare against other small models, not just your own past checkpoints.</span></li>
+              <li><b>Take the final checkpoint into Track B and run SFT on it.</b> <span class="why">— a raw pretrained base is not an assistant; this handoff is required, not optional.</span></li>
+            </ol>
+            <h4>RELATED CONCEPTS</h4>
+            <div class="tags"><span class="tag">perplexity tracking</span><span class="tag">generation sanity checks</span><span class="tag">lm-eval-harness</span><span class="tag">base → instruct handoff</span></div>
+            <h4>PROS / CONS</h4>
+            <div class="pc-grid">
+              <div class="pc-box pro"><span class="pc-label">PROS</span><ul><li>Closes the full loop from raw data to a model you actually built</li></ul></div>
+              <div class="pc-box con"><span class="pc-label">CONS</span><ul><li>Your SLM will underperform equivalent-size open models — expected, the point was the pipeline</li></ul></div>
+            </div>
+            <h4>WHEN TO USE</h4>
+            <div class="when"><p>Always the final step of Track C — and the natural bridge back into Track B.</p></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="subtrack-list">
+        <div class="section-title">CONCEPTS &amp; THEORY</div>
+        <dl class="theory-grid">
+          <div class="theory-item"><dt>Chinchilla scaling laws</dt><dd>For a fixed compute budget there's an optimal balance of model size vs training tokens — oversized models trained on too little data waste compute.</dd></div>
+          <div class="theory-item"><dt>Why data quality dominates at small scale</dt><dd>An SLM has far less capacity to "average out" noisy or duplicate data than a frontier-scale model does.</dd></div>
+          <div class="theory-item"><dt>The positional encoding problem</dt><dd>Transformers have no inherent sense of token order; RoPE injects relative position information directly into the attention computation.</dd></div>
+          <div class="theory-item"><dt>Pre-norm vs post-norm</dt><dd>Modern models place normalization before each sub-layer rather than after — what makes very deep transformers trainable at all.</dd></div>
+          <div class="theory-item"><dt>Why AdamW, not plain SGD</dt><dd>Adaptive per-parameter learning rates handle the wildly different gradient scales across a transformer's layers far better than a single fixed rate.</dd></div>
+          <div class="theory-item"><dt>Compute-cost estimation</dt><dd>A rough FLOPs-per-token formula (~6N per token, N = parameter count) lets you estimate training time and cost before committing to a run.</dd></div>
+        </dl>
+      </section>
+
+      <div class="use-box"><b>When should you use this track?</b> Only when your actual goal is to understand or need the pretraining process itself, or no usable open base model exists for your domain or language. For almost every applied product need, an existing base model plus Track B is faster, cheaper, and better — treat Track C as a learning/foundational track, not a shortcut to a better product model.</div>
+
+      <section class="subtrack-list">
+        <div class="section-title">INTERVIEW QUESTIONS</div>
+        <div class="interview-list">
+          <div class="interview-item"><div class="q"><span class="qn">01</span>What does the Chinchilla scaling law say, and why did earlier models like GPT-3 violate it?</div><div class="hint">Compute-optimal training balances model size and token count; GPT-3-era models were oversized relative to the data they were trained on.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">02</span>Why is a cosine LR schedule with warmup preferred over a constant learning rate?</div><div class="hint">Warmup avoids early instability from large updates on randomly initialized weights; decay lets the model settle into a minimum later in training.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">03</span>What typically causes a loss spike during pretraining, and how do you recover?</div><div class="hint">Often a bad data batch or momentum buildup; recover by rolling back to a recent checkpoint and adjusting LR or gradient clipping.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">04</span>What does grouped-query attention save relative to standard multi-head attention?</div><div class="hint">It shares key/value projections across groups of query heads, cutting KV-cache memory substantially with minimal quality loss.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">05</span>Why does deduplication matter more than most newcomers expect?</div><div class="hint">Duplicate data wastes training compute and can cause the model to memorize rather than generalize from that content.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">06</span>Mechanically, what's the difference between a base model and an instruct model?</div><div class="hint">A base model is purely next-token-trained on raw text; an instruct model has additional SFT (and often preference tuning) on top.</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">07</span>How would you decide your model's vocabulary size?</div><div class="hint">Balance sequence length (smaller vocab → longer sequences) against embedding table size (larger vocab → more parameters in embeddings alone).</div></div>
+          <div class="interview-item"><div class="q"><span class="qn">08</span>Why might your 150M-parameter model underperform a 1B-parameter open model even with clean data and a solid architecture?</div><div class="hint">Parameter count itself is a capacity ceiling — good data and architecture get you to that ceiling efficiently, they don't raise it.</div></div>
+        </div>
+      </section>
+
+      <div class="prompt-block">
+        <div class="prompt-head">
+          <span class="t"><span class="sq"></span>CLAUDE CODE PROMPT — slm-pretrain-lab</span>
+          <button class="copy-btn" data-target="prompt-c">Copy</button>
+        </div>
+        <pre class="prompt-text" id="prompt-c">I'm a novice learning to pretrain a small language model from scratch. Set up a project called `slm-pretrain-lab` that takes me from raw data to a working ~150M parameter base model, in stages, pausing after each for my review.
+
+<span class="stage">Stage 1 — Data pipeline:</span> Write a script to download a small (1-10GB) slice of an open pretraining dataset (e.g. FineWeb-Edu). Add a quality-filtering script (language ID + basic heuristics) that reports how much data it removes, and a MinHash deduplication script with before/after stats.
+
+<span class="stage">Stage 2 — Tokenizer:</span> Write a script that trains a BPE tokenizer from scratch on the cleaned data at two vocab sizes (e.g. 16k and 32k), and reports average tokens-per-document for each so I can compare the tradeoff. Then tokenize and pack the full dataset into fixed-length sequences and save it in a format ready for training.
+
+<span class="stage">Stage 3 — Architecture:</span> Starting from a bare decoder-only transformer block (attention + MLP + residuals, no modern tricks), incrementally add RoPE, RMSNorm, SwiGLU, and grouped-query attention as separate, testable commits. After each addition, run a short training smoke test to confirm loss still decreases. Include a script that computes the model's parameter count and the KV-cache memory savings from GQA vs standard multi-head attention.
+
+<span class="stage">Stage 4 — Training loop:</span> Use nanoGPT or litGPT as a scaffold, swap in my architecture from Stage 3, and confirm it trains on a tiny toy dataset first. Configure AdamW with cosine LR schedule + warmup, add logging (loss, learning rate, grad norm) every N steps, and add checkpointing with resume support. Include a deliberate "induce and recover from a loss spike" test script.
+
+<span class="stage">Stage 5 — Multi-GPU (if available):</span> Wrap the training loop in PyTorch DDP and add a script that confirms single-GPU and multi-GPU loss curves match on a small run.
+
+<span class="stage">Stage 6 — Full run:</span> Launch the full pretraining run on the prepared dataset from Stage 2, with regular checkpointing and held-out perplexity tracked alongside training loss (not just training loss alone).
+
+<span class="stage">Stage 7 — Evaluation & handoff:</span> Generate sample text at several checkpoints along training and save outputs so progress is visible over time. Run lm-eval-harness on the final checkpoint against small benchmarks appropriate for this model size. Finally, write a HANDOFF.md documenting how to feed this checkpoint into the llm-finetune-lab project's SFT stage.
+
+Throughout: comment each script's purpose and expected runtime, keep the default config runnable in under a day on a handful of consumer/cloud GPUs, and end with a SUMMARY.md documenting what each stage taught me.</pre>
+      </div>
+
+      <footer class="note">Next: feed your final checkpoint into the llm-finetune-lab project from Track B — that's the required handoff, not an optional extra.</footer>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.track-panel');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      window.scrollTo({top:0, behavior:'instant'});
+    });
+  });
+
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById(btn.dataset.target);
+      const text = el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1600);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
